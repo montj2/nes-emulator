@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="pNES" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Option virtualFolders="BIT\;" />
+		<Build>
+			<Target title="BuildTest">
+				<Option output="bin/Debug/pNES" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-g" />
+					<Add option="-DFASTTYPE" />
+					<Add option="-DVERBOSE" />
+					<Add option="-DCOMPILE_ONLY" />
+				</Compiler>
+			</Target>
+			<Target title="FastTypeV">
+				<Option output="bin/Debug/pNES" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-g" />
+					<Add option="-DFASTTYPE" />
+					<Add option="-DVERBOSE" />
+				</Compiler>
+			</Target>
+			<Target title="FastType">
+				<Option output="bin/Debug/pNES" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-g" />
+					<Add option="-DFASTTYPE" />
+				</Compiler>
+			</Target>
+			<Target title="ExactTypeV">
+				<Option output="bin/Debug/pNES" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-g" />
+					<Add option="-DEXACTTYPE" />
+					<Add option="-DVERBOSE" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/pNES" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-DFASTTYPE" />
+					<Add option="-DNDEBUG" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-std=c++11" />
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+			<Add option="-include pch.h" />
+		</Compiler>
+		<Linker>
+			<Add library="libgdi32" />
+		</Linker>
+		<Unit filename="BIT.H">
+			<Option virtualFolder="BIT/" />
+		</Unit>
+		<Unit filename="ENUM.H">
+			<Option virtualFolder="BIT/" />
+		</Unit>
+		<Unit filename="FLAG.H">
+			<Option virtualFolder="BIT/" />
+		</Unit>
+		<Unit filename="TOKEN.H">
+			<Option virtualFolder="BIT/" />
+		</Unit>
+		<Unit filename="cpu.cpp" />
+		<Unit filename="cpu.h" />
+		<Unit filename="datatype.h" />
+		<Unit filename="macro.h" />
+		<Unit filename="main.cpp" />
+		<Unit filename="mmc.cpp" />
+		<Unit filename="mmc.h" />
+		<Unit filename="nes.h" />
+		<Unit filename="optable.cpp" />
+		<Unit filename="optable.h" />
+		<Unit filename="pch.h">
+			<Option compile="1" />
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="ppu.cpp" />
+		<Unit filename="ppu.h" />
+		<Unit filename="ui.cpp" />
+		<Unit filename="ui.h" />
+		<Unit filename="unittest.h" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
