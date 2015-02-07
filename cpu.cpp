@@ -250,7 +250,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			addr=loadOperand(PC);
 			addr.add(X);
 			addr.bitAndEqual(0xFF);
-			addr=loadOperand16bit(addr);
+			addr=loadZp16bit(addr8_t::wrapper(addr));
 			inc(PC);
 			break;
 
@@ -299,15 +299,47 @@ int cpu_exec() // Emulates a single CPU instruction
 	switch (opinf.inst)
 	{
 		case M6502_INST::INS_ADC: // Add with carry.
-		    assert(!P[F_BCD]);
 
-			temp=A;
-			value=read6502(addr);
-			temp+=value;
-			temp+=P[F_CARRY]?1:0;
+		    if (!P[F_BCD]) // binary add
+            {
+                temp=A;
+                value=read6502(addr);
+                temp+=value;
+                temp+=P[F_CARRY]?1:0;
 
-			P.set(F_OVERFLOW,!((A^value)&0x80) && ((A^temp)&0x80));
-			P.set(F_CARRY,SUM.isOverflow());
+                P.set(F_OVERFLOW,!((A^value)&0x80) && ((A^temp)&0x80));
+                P.set(F_CARRY,SUM.isOverflow());
+            }else
+            {
+                temp=A;
+                value=read6502(addr);
+                // check BCD
+                assert((temp&0xF)<=9 && (temp>>4)<=9);
+                assert((value&0xF)<=9 && (value>>4)<=9);
+                // add CF
+                temp+=P[F_CARRY]?1:0;
+
+                // add low digit
+                if ((temp&0xF)+(value&0xF)>9)
+                {
+                    temp+=(value&15)+6;
+                    P.set(F_CARRY,true);
+                }else
+                {
+                    temp+=(value&15);
+                    P.set(F_CARRY,false);
+                }
+                if ((temp>>4)+(value>>4)>9)
+                {
+                    temp+=(value&0xF0)+6;
+                    P.set(F_OVERFLOW,true);
+                    P.set(F_CARRY,true);
+                }else
+                {
+                    temp+=(value&0xF0);
+                    P.set(F_OVERFLOW,false);
+                }
+            }
 
 			regA.bitCopyAndWrap(temp);
 			SET_NZ(regA);
@@ -618,7 +650,7 @@ void cpu_reset()
     irqType=IRQ_NONE;
 
     PC=loadOperand16bit(VECTOR_RESET); // RESET
-    PC=0xC000;
+    PC=0xC000; // manually set only when run nestest.rom
     printf("[CPU] Reset to $%04X\n",valueOf(PC));
 
 	opCount=0;
@@ -631,8 +663,9 @@ int cpu_frame() {
     while (isRunning) {
         if (cycles>maxCycles) {
             cycles-=maxCycles;
-            if (ppu_endScanline())
+            /*if (ppu_endScanline())
                 break; // frame ends
+                */
         }
         cycles+=cpu_exec();
     }

@@ -38,7 +38,7 @@ public:
 
 #ifdef COMPILE_ONLY
     #define FASTCAST(VAR,TP) (cast<TP>(VAR))
-    #define FASTCONST(VAR,TP) (cast<const TP>(VAR))
+    #define FASTCONSTCAST(VAR,TP) (cast<const TP>(VAR))
 #else
     #define FASTCAST(VAR,TP) ((TP&)*(TP*)(&VAR))
     #define FASTCONSTCAST(VAR,TP) ((const TP&)*(TP*)(&VAR))
