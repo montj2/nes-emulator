@@ -136,7 +136,7 @@ static void blt() {
 }
 
 static void beginFrame() {
-    address1.bitCopy(ValueOf(scrollReg)); // apply scroll register
+    if (control2[CTL2_BG_VISIBLE]) address1.bitCopy(ValueOf(scrollReg)); // apply scroll register
     // invalid frame buffer
     memset(vBuffer,0,sizeof(vBuffer));
 }
@@ -272,6 +272,7 @@ static void setVRAMAddress(const byte_t byte) {
     }else { // 8 lower bits
         address1.update(ADDRREG_LOWBYTE,byte);
     }
+    printf("ADDRESS1 <- %X\n",ValueOf(address1));
     firstWrite=!firstWrite;
 }
 
