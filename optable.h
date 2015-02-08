@@ -105,11 +105,12 @@ struct M6502_OPCODE
     uint8_t size;
 };
 
-void cpu_initTable();
-void cpu_testTable();
+void OptSelfTest();
+void OptInit();
 
-M6502_OPCODE cpuGetOpData(const opcode_t opcode);
-const char* cpuGetInstNameByInst(const M6502_INST inst);
-const char* cpuGetAddrModeDesc(const M6502_ADDRMODE adrmode);
-const char* cpuGetInstNameByOpcode(const opcode_t opcode);
-bool cpuIsUsualOp(const opcode_t opcode);
+M6502_OPCODE ParseOp(const opcode_t opcode);
+bool IsUsualOp(const opcode_t opcode);
+
+const char* GetInstName(const M6502_INST inst);
+const char* GetInstName(const opcode_t opcode);
+const char* ExplainAddrMode(const M6502_ADDRMODE adrmode);

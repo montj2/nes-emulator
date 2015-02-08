@@ -8,14 +8,15 @@ struct NESRAM
 		struct
 		{
 			uint8_t zeropage[0x100];
-			uint8_t stack[0x100]; // $ 0100 Stack
+			uint8_t stack[0x100]; // $0100 Stack
 		};
 	};
     uint8_t __bank0_mirror[0x1800];
-    uint8_t __io[0x3000]; // don't access it directly
+    uint8_t __io[0x3000]; // don't access directly
     uint8_t __ext[0x1000];
     uint8_t bank6[8192]; // $6000 SaveRAM
-    uint8_t bank8[8192],bankA[8192],bankC[8192],bankE[8192]; // $8000 PRG-ROM
+    uint8_t bank8[8192],bankA[8192]; // $8000 PRG-ROM
+    uint8_t bankC[8192],bankE[8192]; // C8000 Mirror of PRG-ROM
 };
 
 extern struct NESRAM ram;

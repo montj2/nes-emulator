@@ -154,12 +154,11 @@ int cpu_exec() // Emulates a single CPU instruction
     }
 
 	// ------------------------------------------------------
-	assert((valueOf(PC)>>15)==1); // in code section
 	// Fetch next instruction:
 	// ------------------------------------------------------
 	const maddr_t               opaddr  =   PC;
 	const opcode_t              opcode  =   readCode(PC);
-	const struct M6502_OPCODE   opinf   =   cpuGetOpData(opcode);
+	const struct M6502_OPCODE   opinf   =   ParseOp(opcode);
 	maddr_t                     addr;
 	int                         cycleAdd=   0;
 
@@ -169,8 +168,10 @@ int cpu_exec() // Emulates a single CPU instruction
 	#endif
 	//fprintf(log,"%X <%X> #%I64d\n",opcode,opaddr,opCount);
 
-    asmprintf("[CPU] CIA = %04X %02X\t%s",valueOf(opaddr),opcode,cpuGetInstNameByInst(opinf.inst));
-    assert(cpuIsUsualOp(opcode));
+    asmprintf("[CPU] CIA = %04X %02X\t%s",valueOf(opaddr),opcode,GetInstName(opinf.inst));
+    // TODO: Keep assertion
+    // assert(cpuIsUsualOp(opcode));
+    assert(PC!=0xC66E);
 
 	switch (opinf.addrmode)
 	{
@@ -277,7 +278,7 @@ int cpu_exec() // Emulates a single CPU instruction
 	}
 	if (opinf.addrmode!=M6502_ADDRMODE::ADR_IMP)
     {
-        asmprintf("\t// %s\n",cpuGetAddrModeDesc(opinf.addrmode));
+        asmprintf("\t// %s\n",ExplainAddrMode(opinf.addrmode));
         addr.checkAssert();
     }
     else
@@ -286,7 +287,7 @@ int cpu_exec() // Emulates a single CPU instruction
     }
 
     // check instruction size
-	assert(valueOf(PC)-valueOf(opaddr)==opinf.size);
+    assert(valueOf(PC)-valueOf(opaddr)==opinf.size);
 
 	// ------------------------------------------------------
 	// Decode & execution instruction:
@@ -651,7 +652,7 @@ void cpu_reset()
 
     PC=loadOperand16bit(VECTOR_RESET); // RESET
     PC=0xC000; // manually set only when run nestest.rom
-    printf("[CPU] Reset to $%04X\n",valueOf(PC));
+    printf("[CPU] PC reset to $%04X\n",valueOf(PC));
 
 	opCount=0;
 	memset(insCount,0,sizeof(insCount));
@@ -660,19 +661,21 @@ void cpu_reset()
 
 int cpu_frame() {
     int isRunning=1;
-    while (isRunning) {
-        if (cycles>maxCycles) {
+    while (isRunning)
+    {
+        while (cycles>maxCycles)
+        {
             cycles-=maxCycles;
-            /*if (ppu_endScanline())
+            if (ppu_endScanline())
                 break; // frame ends
-                */
         }
         cycles+=cpu_exec();
     }
     return 1;
 }
 
-void cpu_requestIRQ(enum IRQ_TYPE type) {
+void cpu_requestIRQ(enum IRQ_TYPE type)
+{
     // assert $2000 D7
     assert(type!=IRQ_NONE);
     irqRequested=true;

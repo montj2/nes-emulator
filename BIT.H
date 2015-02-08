@@ -2,11 +2,16 @@
 template <typename T,int bits>
 class BIT {
     public:
-        typedef T           DataTp,ValueTp;
-        typedef DataTp      CheckTp;
+        typedef T DataTp,ValueTp;
+        typedef DataTp CheckTp;
 
-        enum {
-            MASK=(DataTp)BIT_MASK(DataTp,bits),
+        enum :DataTp
+        {
+            MASK=BIT_MASK(DataTp,bits),
+            MAX=MASK
+        };
+        enum
+        {
             __TYPE_CHECK=STATIC_ASSERT(bits>0 && bits<=TYPE_BITS(DataTp) && std::is_unsigned<DataTp>::value )
         };
 
@@ -15,19 +20,24 @@ class BIT {
 
     protected:
         // boundary check
-        bool _check() const {
+        bool _check() const
+        {
             #ifdef VERBOSE
                 if (bits==TYPE_BITS(DataTp)) return true;
             #endif // VERBOSE
             return (0==(value&(~MASK)));
         }
 
-        void _wrap() {
-            if (bits!=TYPE_BITS(DataTp))
-                value&=MASK;
+        void _wrap()
+        {
+            #ifdef VERBOSE
+                if (bits!=TYPE_BITS(DataTp))
+            #endif // VERBOSE
+            value&=MASK;
         }
 
-        static BIT _wrapper(const DataTp data) {
+        static BIT _unchecked_wrapper(const DataTp data)
+        {
             BIT ret;
             ret.value=data;
             return ret;
@@ -37,8 +47,8 @@ class BIT {
         // ctors
         BIT() = default;
         ~BIT() = default;
-        BIT(const BIT&) = default; // copy ctor (w/ checking)
-        BIT& operator =(const BIT&) = default; // copy assignment ctor (w/ checking)
+        BIT(const BIT&) = default; // copy ctor (w/o checking)
+        BIT& operator =(const BIT&) = default; // copy assignment ctor (w/o checking)
 
         // getters
         GENERATE_GETTER(BIT) // type conversion
@@ -54,14 +64,15 @@ class BIT {
             return ret;
         }
 
-        // auto boxing (deprecated)
-        BIT(const CheckTp rhs) = delete;  /* {
+        // auto boxing (restricted)
+        explicit BIT(const CheckTp rhs)
+        {
             GENERATE_SETVALUE(rhs);
             assert(0==(value&(~MASK)));
-        }*/
+        }
 
-        // setter
-        GENERATE_SETTER(BIT) { // = CheckType
+        // setter (lhs = CheckType)
+        GENERATE_SETTER(BIT) {
             GENERATE_SETVALUE(rhs);
             assert(0==(value&(~MASK)));
             return *this;
@@ -73,12 +84,7 @@ class BIT {
 
         // FLAG converter
         template <typename ET>
-        FLAG<T,ET,bits>* operator ->() {
-            return (FLAG<T,ET,bits>*)this;
-        }
-
-        template <typename ET>
-        FLAG<T,ET,bits>& toFLAG() {
+        FLAG<T,ET,bits>& asFLAG() {
             return (FLAG<T,ET,bits>&)*this;
         }
 
@@ -105,9 +111,9 @@ class BIT {
 
         ValueTp lowbit()     const {return LOW_BIT(value);}
 
-        BIT plus(const ValueTp delta)    const {return _wrapper((value+delta)&MASK);}
+        BIT plus(const ValueTp delta)    const {return _unchecked_wrapper((value+delta)&MASK);}
 
-        BIT minus(const ValueTp delta)   const {return _wrapper((value-delta)&MASK);}
+        BIT minus(const ValueTp delta)   const {return _unchecked_wrapper((value-delta)&MASK);}
 
         // the following functions may change the value, and they return ValueTp
         ValueTp add(const ValueTp delta) {return value=(value+delta)&MASK;}

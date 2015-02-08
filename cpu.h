@@ -6,8 +6,6 @@ enum IRQ_TYPE {
 };
 
 void cpu_reset();
-void cpu_initTable();
-void cpu_testTable();
 int cpu_exec();
 int cpu_frame();
 void cpu_requestIRQ(enum IRQ_TYPE);

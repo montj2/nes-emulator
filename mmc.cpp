@@ -77,7 +77,8 @@ int mmc_setup(uint8_t mapperType,const void* gameImage)
 
 byte_t readCode(const maddr_t pc)
 {
-	assert((valueOf(pc)>>15)==1); // $8000<=PC<=$FFFF
+    // TODO: Keep assertion
+	// assert((valueOf(pc)>>15)==1); // $8000<=PC<=$FFFF
 	#ifdef NDEBUG
         return ram.bank8[pc-0x8000];
     #else
@@ -87,13 +88,13 @@ byte_t readCode(const maddr_t pc)
 
 byte_t loadOperand(const maddr_t pc)
 {
-	assert((valueOf(pc)>>15)==1);
+	assert((valueOf(pc)>>15)==1); // DEP
 	return ram.ram_data[valueOf(pc)];
 }
 
 word_t loadOperand16bit(const maddr_t pc)
 {
-	assert((valueOf(pc)>>15)==1 && pc.isNotMax());
+	assert((valueOf(pc)>>15)==1 && pc.isNotMax()); // DEP
 	return *(uint16_t*)&(ram.ram_data[valueOf(pc)]);
 }
 

@@ -6,4 +6,6 @@ void testPPU();
 void testMMC();
 void testCPU();
 
+void BITTests();
+
 #endif // UNITTEST_H_INCLUDED
