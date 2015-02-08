@@ -36,7 +36,7 @@ class FLAG {
             value=data;
         }
 
-        void bitCopy(const BIT<T,bits>& rhs) { // w/ checking
+        void bitCopy(const BIT<T,bits>& rhs) { // w/o checking
             this->value=rhs.value;
         }
 

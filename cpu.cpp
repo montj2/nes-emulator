@@ -42,14 +42,15 @@ unsigned long cycles;
 const unsigned long maxCycles=114;
 
 /* Statistics */
-__int64 opCount;
-__int64 insCount[(int)M6502_INST::_INS_MAX],adrCount[(int)M6502_ADDRMODE::_ADR_MAX];
+long long insCount;
+long long opCount[(int)M6502_INST::_INS_MAX];
+long long adrCount[(int)M6502_ADDRMODE::_ADR_MAX];
 
 /* IRQ */
 bool irqRequested;
 enum IRQ_TYPE irqType;
 
-bool DebugMode=true;
+bool DebugMode=false;
 #define asmprintf if (DebugMode) printf
 //#define asmprintf(...) (void)0
 
@@ -132,7 +133,7 @@ static inline void ROR(BIT<T,bits>& operand) {
 
 static void doNMI() {
     PUSH_PC();
-    PUSH_REG(P());
+    PUSH_REG(ValueOf(P));
     PC=loadOperand16bit(VECTOR_NMI); // NMI
 }
 
@@ -141,13 +142,14 @@ int cpu_exec() // Emulates a single CPU instruction
     // IRQ processing
     if (irqRequested)
     {
-        switch (irqType) {
-        case IRQ_NMI:
-            doNMI();
-            break;
-        default:
-            assert(0);
-            break;
+        switch (irqType)
+        {
+            case IRQ_NMI:
+                doNMI();
+                break;
+            default:
+                assert(0);
+                break;
         }
         irqRequested=false;
         irqType=IRQ_NONE;
@@ -164,14 +166,15 @@ int cpu_exec() // Emulates a single CPU instruction
 
 	inc(PC);
 	#ifndef NDEBUG
-        ++opCount;++insCount[(int)opinf.inst];++adrCount[(int)opinf.addrmode];
+        ++insCount;
+        ++opCount[(int)opinf.inst];
+        ++adrCount[(int)opinf.addrmode];
 	#endif
 	//fprintf(log,"%X <%X> #%I64d\n",opcode,opaddr,opCount);
 
+    //if (valueOf(opaddr)==0xC009 || valueOf(opaddr)==0x0C00C) DebugMode=false;else DebugMode=true;
     asmprintf("[CPU] CIA = %04X %02X\t%s",valueOf(opaddr),opcode,GetInstName(opinf.inst));
-    // TODO: Keep assertion
-    // assert(cpuIsUsualOp(opcode));
-    assert(PC!=0xC66E);
+    assert(IsUsualOp(opcode));
 
 	switch (opinf.addrmode)
 	{
@@ -389,7 +392,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			inc(PC);
 			PUSH_PC();
 			P.set(F_BREAK);
-			PUSH_REG(P());
+			PUSH_REG(ValueOf(P));
 			P.set(F_INTERRUPT_OFF);
 			PC=loadOperand16bit(VECTOR_IRQ); // IRQ/BRK
 			break;
@@ -524,7 +527,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			break;
 
 		case M6502_INST::INS_PHP: // Push processor status on stack
-			PUSH_REG(P());
+			PUSH_REG(ValueOf(P));
 			break;
 
 		case M6502_INST::INS_PLA: // Pull accumulator from stack
@@ -628,7 +631,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			break;
 	}
 
-	asmprintf("NIA =  [%04X] A=%X, X=%X, Y=%X, P=%X, SP=%X\n",valueOf(PC),(uint8_t)A,(uint8_t)X,(uint8_t)Y,(uint8_t)P(),valueOf(SP));
+	asmprintf("NIA =  [%04X] A=%X, X=%X, Y=%X, P=%X, SP=%X\n",valueOf(PC),(uint8_t)A,(uint8_t)X,(uint8_t)Y,ValueOf(P),valueOf(SP));
 	asmprintf("\n");
 	regA.checkAssert();
 	regX.checkAssert();
@@ -651,11 +654,10 @@ void cpu_reset()
     irqType=IRQ_NONE;
 
     PC=loadOperand16bit(VECTOR_RESET); // RESET
-    PC=0xC000; // manually set only when run nestest.rom
     printf("[CPU] PC reset to $%04X\n",valueOf(PC));
 
-	opCount=0;
-	memset(insCount,0,sizeof(insCount));
+	insCount=0;
+	memset(opCount,0,sizeof(opCount));
 	memset(adrCount,0,sizeof(adrCount));
 }
 

@@ -98,17 +98,17 @@ enum PSW {
 static void testFLAG()
 {
     FLAG<_reg8_t,PSW,8> P;
-    printf("P=%X\n",P());
+    printf("P=%X\n",ValueOf(P));
     P.clear();
     assert(!P.any());
 
     P.set(F_ZERO);
     P-=F_BCD;
-    assert(P()==F_ZERO);
+    assert(ValueOf(P)==F_ZERO);
     P^=F_MULTIPLE;
-    assert(P()==(F_ZERO|F_MULTIPLE));
+    assert(ValueOf(P)==(F_ZERO|F_MULTIPLE));
     P^=F_ZERO;
-    assert(P()==F_MULTIPLE);
+    assert(ValueOf(P)==F_MULTIPLE);
     P.update(F_BCD,1);
     //P.update(F_BCD,2);
     P.update(F_BCD,0);
@@ -121,21 +121,21 @@ static void testFLAG()
     assert(P.query(F_MULTIPLE)==0x11);
     assert(P.query(F_MULTIPLE2)==0b10001);
     P.update(F_MULTIPLE2,0);
-    assert(P()==0xFF-F_MULTIPLE2);
+    assert(ValueOf(P)==0xFF-F_MULTIPLE2);
 
     P.clear();
     P.update(F_MULTIPLE,0x11);
-    assert(P()==F_MULTIPLE);
+    assert(ValueOf(P)==F_MULTIPLE);
 
     P.set();
     P.copy(F_MULTIPLE3,0b1101,1);
-    assert(P()==0x8F);
+    assert(ValueOf(P)==0x8F);
 
     P.set();
     assert(P.query(F_MULTIPLE2)==0x11);
     assert(P[F_MAX] && P.test(F_MULTIPLE));
     P.update(F_MULTIPLE2,0x10);
-    assert(P()==0xFF-4);
+    assert(ValueOf(P)==0xFF-4);
     assert(P(F_MULTIPLE2)==0x10);
     assert(!P.test(F_MULTIPLE2));
 

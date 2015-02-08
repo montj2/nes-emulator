@@ -59,7 +59,7 @@ template <typename T>
 inline T max(const T& x,const T& y) {return x>y?x:y;}
 
 #define GENERATE_GETTER(CLASSNAME) operator ValueTp() const {return (ValueTp)(this->value);}
-#define GENERATE_ALTERNATIVE_GETTER(CLASSNAME) ValueTp operator ()(void) const {return (ValueTp)(this->value);}
+#define GENERATE_ALTERNATIVE_GETTER(CLASSNAME) friend ValueTp ValueOf(const CLASSNAME& x) {return x.value;}
 #define GENERATE_SETTER(CLASSNAME) CLASSNAME& operator =(const CheckTp rhs)
 // #define GENERATE_CTOR(CLASSNAME,DEFAULTVALUE) CLASSNAME(const CheckTp initialValue=(CheckTp)(DEFAULTVALUE))
 #define GENERATE_SETVALUE(NEWVALUE) this->value=(DataTp)(NEWVALUE)

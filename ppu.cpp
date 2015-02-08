@@ -53,7 +53,7 @@ enum PPUADDRESS{
     ADDRREG_LOWBYTE=0xFF,
 
     ADDRREG_BANK=0x3000/*0xF000*/,
-    ADDRREG_BANKOFFSET=0xFFF
+    ADDRREG_BANKOFFSET=0x0FFF
 };
 
 typedef FLAG<_addr15_t,PPUADDRESS,15> scroll_flag_t;
@@ -112,7 +112,7 @@ void ppu_reset() {
 }
 
 static ioreg_t readStatusRegister() {
-    const ioreg_t ret=status();
+    const ioreg_t ret=ValueOf(status);
     // clear VBlank flag
     status.clear(STATUS_VBLANK);
     // After a read occurs, $2005 and $2006 are reset.
@@ -136,7 +136,7 @@ static void blt() {
 }
 
 static void beginFrame() {
-    address1.bitCopy(scrollReg()); // apply scroll register
+    address1.bitCopy(ValueOf(scrollReg)); // apply scroll register
     // invalid frame buffer
     memset(vBuffer,0,sizeof(vBuffer));
 }
@@ -147,6 +147,7 @@ static void presentFrame() {
 
 static void endFrame() {
     frame++;
+    printf("======= FRAME %ld =======\n",frame);
 }
 
 static void renderScanline(const unsigned long scanline) {
@@ -231,6 +232,7 @@ static void startHBlank() {
 bool ppu_endScanline() {
     if (scanline==0)  beginFrame();
 
+    printf("---- SCANLINE %ld ----\n",scanline);
     startHBlank();
     if (scanline<=239) renderScanline(scanline);
     if (scanline>=240) status.set(STATUS_VBLANK);
@@ -339,7 +341,7 @@ static vaddr_t vramMirror(vaddr_t addr) {
         }
         // mirrorpal: [$3F00,$3FFF]
         vaddr->bitAndEqual(0x3F1F);
-        if (0==(vaddr()&0x3)) // $3F00=$3F04=$3F08=...
+        if (0==(ValueOf(vaddr)&0x3)) // $3F00=$3F04=$3F08=...
             vaddr->bitAndEqual(0x3F00);
         break;
     default:
@@ -372,7 +374,14 @@ static byte_t vramLoad() {
 static void vramWrite(const byte_t data) {
     const vaddr_t addr=vramMirror(incAddress1());
     ppu_latch=data;firstWrite=true; // different implementation
+    assert(addr>=0x2000);
     vram.vram_data[addr]=data;
+    if (addr>=0x3000)
+    {
+        assert(addr>=0x3F00 && addr<=0x3F1F);
+        printf("[PPU] WritePal %X to 0x%04x\n",data,valueOf(addr));
+    }
+    printf("[PPU] Write %X to 0x%04x\n",data,valueOf(addr));
 }
 
 byte_t ppu_regLoad(const maddr_t maddress) {

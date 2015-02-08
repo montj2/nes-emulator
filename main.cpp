@@ -17,21 +17,24 @@ void                        *trainerData;
 void                        *gameImage;
 void                        *VROM;
 
-bool loadRom(const char* filename)
+static bool
+loadRom(const char* filename)
 {
     FILE *fp;
-    char nesMagic[4]={0};
-    char Reserved[8]={0};
+    uint8_t nesMagic[4]={0};
+    uint8_t reserved[8]={0};
 
     fp=fopen(filename,"rb");
     if (fp==NULL)
     {
-        printf("fopen(%s) failed\nerror code is %d",filename,errno);
+        printf("Couldn't open %s (error code %d)\n",filename,errno);
         return false;
     }
 
+    // check signature
     fread(nesMagic,4,1,fp);
-    if (nesMagic[0]!='N' || nesMagic[1]!='E' || nesMagic[2]!='S') {
+    if (memcmp(nesMagic,"NES",3))
+    {
         puts("Invalid nes header");
         goto onerror;
     }
@@ -40,12 +43,13 @@ bool loadRom(const char* filename)
     fread(&chrCount,1,1,fp);
     fread(&RomCtrl,1,1,fp);
     fread(&RomCtrl2,1,1,fp);
-    fread(&Reserved,8,1,fp);
+    fread(&reserved,8,1,fp);
 
     printf("[ %u ] ROM Banks\n",prgCount);
     printf("[ %u ] CHR Banks\n",chrCount);
-    printf("[ %u ] ROM Control Byte #1\n",RomCtrl());
-    printf("[ %u ] ROM Control Byte #2\n",RomCtrl2());
+    printf("[ %u ] ROM Control Byte #1\n",ValueOf(RomCtrl));
+    printf("[ %u ] ROM Control Byte #2\n",ValueOf(RomCtrl2));
+
     mapperType=RomCtrl(RCTL1_MAPPERLOW);
     mapperType|=RomCtrl2(RCTL2_MAPPERHIGH)<<4;
     printf("[ %u ] Mapper\n",mapperType);
@@ -89,7 +93,9 @@ int ppu_copyBanks(int dest,int src,int count)
     return 0;
 }
 
-static void init() {
+static void
+init()
+{
     #ifndef NDEBUG
         // Run Unit Tests
         BITTests();
@@ -110,7 +116,8 @@ static void init() {
     ppu_loadPal();
 }
 
-int main() {
+int main()
+{
 
     init();
 

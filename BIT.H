@@ -1,4 +1,4 @@
-// T should be one of the basic unsigned data types
+// T should be one of unsigned basic data types
 template <typename T,int bits>
 class BIT {
     public:
@@ -52,7 +52,7 @@ class BIT {
 
         // getters
         GENERATE_GETTER(BIT) // type conversion
-        // GENERATE_ALTERNATIVE_GETTER(BIT) // overloads operator ()
+        GENERATE_ALTERNATIVE_GETTER(BIT)
 
         DataTp* _addr() {return &this->value;}
         DataTp& _ref() {return this->value;}

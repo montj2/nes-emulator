@@ -86,15 +86,13 @@
 		<Unit filename="BIT.H">
 			<Option virtualFolder="BIT/" />
 		</Unit>
-		<Unit filename="ENUM.H">
-			<Option virtualFolder="BIT/" />
-		</Unit>
 		<Unit filename="FLAG.H">
 			<Option virtualFolder="BIT/" />
 		</Unit>
 		<Unit filename="TOKEN.H">
 			<Option virtualFolder="BIT/" />
 		</Unit>
+		<Unit filename="bittest.cpp" />
 		<Unit filename="cpu.cpp" />
 		<Unit filename="cpu.h" />
 		<Unit filename="datatype.h" />
