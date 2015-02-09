@@ -1,16 +1,9 @@
-#define RETURN
-#define RETURNTYPE void
-
 template <typename T,int bits=TYPE_BITS(T)> class BIT;
 template <typename T,typename ET,int bits=TYPE_BITS(T)> class FLAG;
 
 #include "BIT.H"
 //#include "TOKEN.H"
 #include "FLAG.H"
-// #include "ENUM.H"
-
-#undef RETURN
-#undef RETURNTYPE
 
 #ifdef FASTTYPE
     typedef unsigned _addr16_t;

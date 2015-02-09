@@ -54,6 +54,6 @@ void ppu_reset();
 
 byte_t ppu_regLoad(const maddr_t maddress);
 void ppu_regWrite(const maddr_t maddress,const byte_t data);
-void ppu_sramDMA(const uint8_t* src);
+void ppu_sramDMA(const void* src);
 void ppu_loadPal();
 bool ppu_endScanline();

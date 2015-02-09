@@ -17,8 +17,8 @@
 					<Add option="-Wall" />
 					<Add option="-g" />
 					<Add option="-DFASTTYPE" />
-					<Add option="-DVERBOSE" />
 					<Add option="-DCOMPILE_ONLY" />
+					<Add option="-DVERBOSE" />
 				</Compiler>
 			</Target>
 			<Target title="FastTypeV">
@@ -79,6 +79,7 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 			<Add option="-include pch.h" />
+			<Add option="-DDEP" />
 		</Compiler>
 		<Linker>
 			<Add library="libgdi32" />

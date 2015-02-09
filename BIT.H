@@ -3,20 +3,26 @@ template <typename T,int bits>
 class BIT {
     public:
         typedef T DataTp,ValueTp;
-        typedef DataTp CheckTp;
 
         enum :DataTp
         {
             MASK=BIT_MASK(DataTp,bits),
-            MAX=MASK
         };
+
         enum
         {
             __TYPE_CHECK=STATIC_ASSERT(bits>0 && bits<=TYPE_BITS(DataTp) && std::is_unsigned<DataTp>::value )
         };
 
-    public:
+    #ifdef SAFE_CASTING
+        protected:
+            DataTp value;
+    #else
         DataTp value;
+    #endif
+
+    private:
+        typedef T CheckTp;
 
     protected:
         // boundary check
@@ -46,7 +52,6 @@ class BIT {
     public:
         // ctors
         BIT() = default;
-        ~BIT() = default;
         BIT(const BIT&) = default; // copy ctor (w/o checking)
         BIT& operator =(const BIT&) = default; // copy assignment ctor (w/o checking)
 
@@ -54,10 +59,7 @@ class BIT {
         GENERATE_GETTER(BIT) // type conversion
         GENERATE_ALTERNATIVE_GETTER(BIT)
 
-        DataTp* _addr() {return &this->value;}
-        DataTp& _ref() {return this->value;}
-
-        // wrapper
+        // checked wrapper
         static BIT wrapper(const CheckTp rhs) {
             BIT ret;
             ret=rhs;
@@ -72,29 +74,40 @@ class BIT {
         }
 
         // setter (lhs = CheckType)
-        GENERATE_SETTER(BIT) {
+        GENERATE_SETTER(BIT)
+        {
             GENERATE_SETVALUE(rhs);
             assert(0==(value&(~MASK)));
             return *this;
         }
 
-        void bitCopyAndWrap(const DataTp data) {
+        void bitCopyAndWrap(const DataTp data)
+        {
             value=data&MASK;
         }
 
         // FLAG converter
         template <typename ET>
-        FLAG<T,ET,bits>& asFLAG() {
+        FLAG<T,ET,bits>& asFLAG()
+        {
             return (FLAG<T,ET,bits>&)*this;
+        }
+
+        template <typename ET>
+        BIT(const FLAG<T,ET,bits>& f)
+        {
+            value=ValueOf(f);
         }
 
         // checker
         void checkAssert()   const {assert(_check());}
 
-        // const functions
+        // const functions (don't modify the value)
         bool MSB()           const {return 1&(value>>(bits-1));}
 
         bool LSB()           const {return 1&value;}
+
+        bool bitAt(const int n) const {vassert(n>=0 && n<bits);return value&(((DataTp)1)<<n);}
 
         bool isNegative()    const {return MSB();}
 
@@ -118,79 +131,55 @@ class BIT {
         // the following functions may change the value, and they return ValueTp
         ValueTp add(const ValueTp delta) {return value=(value+delta)&MASK;}
 
-        /* template <typename TP> friend typename TP::ValueTp inc(TP& var,const typename TP::ValueTp delta); */
+        friend ValueTp inc(BIT& var) {++var.value;return var.value&=MASK;}
 
         ValueTp sub(const ValueTp delta) {return value=(value-delta)&MASK;}
 
-        /* template <typename TP> friend typename TP::ValueTp dec(TP& var,const typename TP::ValueTp delta); */
+        friend ValueTp dec(BIT& var) {--var.value;return var.value&=MASK;}
 
         // bitXXX functions
-        RETURNTYPE bitRTrim()       {RETURN value=RTRIM(value);}
+        void bitRTrim()             {value=RTRIM(value);}
 
-        RETURNTYPE bitDropLowbit()  {RETURN value&=(value-1);}
+        void bitDropLowbit()        {value&=(value-1);}
 
-        RETURNTYPE bitCompl() { // = x86 NOT, 255-x
-            RETURN value^=MASK; // faster
+        void bitCompl()
+        { // = x86 NOT, 255-x
+            value^=MASK; // faster
             /*
-                return value=MASK&(~value); // slower, safer
+                return value=MASK&(~value); // slower but safer
                 return value=MASK-value;
             */
         }
 
-        RETURNTYPE bitNOT()                      {RETURN bitCompl();}
+        void bitNOT() {bitCompl();}
 
-        RETURNTYPE bitSetMax()                   {RETURN value=MASK;}
+        void bitSetMax() {value=MASK;}
 
-        RETURNTYPE bitNEG()                      {RETURN value=MASK&(-value);}
+        void bitNEG() {value=MASK&(-value);}
 
-        RETURNTYPE bitAndEqual(const DataTp rhs) {RETURN value&=rhs;}
+        void bitAndEqual(const DataTp rhs) {value&=rhs;}
 
-        RETURNTYPE bitOrEqual(const DataTp rhs)  {RETURN value|=rhs;}
+        void bitOrEqual(const DataTp rhs)  {value|=rhs;}
 
-        RETURNTYPE bitXorEqual(const DataTp rhs) {RETURN value^=rhs;}
+        void bitXorEqual(const DataTp rhs) {value^=rhs;}
 
         // ShiftLeft
-        RETURNTYPE bitShl(const int n) {
-            #ifdef VERBOSE
-                assert(n>=0 && n<=bits);
-            #endif // VERBOSE
-            RETURN value=(value<<n)&MASK;
-        }
+        void bitShl(const int n) {vassert(n>=0 && n<=bits);value=(value<<n)&MASK;}
 
         // ShiftRight
-        RETURNTYPE bitShr(const int n) {
-            #ifdef VERBOSE
-                assert(n>=0 && n<=bits);
-            #endif // VERBOSE
-            RETURN value>>=n;
-        }
+        void bitShr(const int n) {vassert(n>=0 && n<=bits);value>>=n;}
 
         // RotateLeftWithCarry
-        RETURNTYPE bitRcl(const bool carry) {
-            RETURN value=((value<<1)&MASK)|(carry?1:0);
-        }
+        void bitRcl(const bool carry) {value=((value<<1)&MASK)|(carry?1:0);}
 
         // RotateLeft
-        RETURNTYPE bitRol() {
-            RETURN bitRcl(MSB());
-        }
+        void bitRol() {bitRcl(MSB());}
 
         // RotateRightWithCarry
-        RETURNTYPE bitRcr(const bool carry) {
-            RETURN value=(value>>1)|(carry?(1<<(bits-1)):0);
-        }
+        void bitRcr(const bool carry) {value=(value>>1)|(carry?(1<<(bits-1)):0);}
 
         // RotateRight
-        RETURNTYPE bitRor() {
-            RETURN bitRcr(LSB());
-        }
-
-        bool operator [](const int n) const {
-            #ifdef VERBOSE
-                assert(n>=0 && n<bits);
-            #endif // VERBOSE
-            return value&(((DataTp)1)<<n);
-        }
+        void bitRor() {bitRcr(LSB());}
 };
 
 template <typename T,int bits,T constValue>
@@ -201,15 +190,3 @@ public:
     };
     CONST_BIT() {BIT<T,bits>::value=constValue;}
 };
-
-template <class T,int bits>
-inline T inc(BIT<T,bits>& var) {
-    ++var.value;
-    return var.value&=BIT<T,bits>::MASK;
-}
-
-template <class T,int bits>
-inline T dec(BIT<T,bits>& var) {
-    --var.value;
-    return var.value&=BIT<T,bits>::MASK;
-}

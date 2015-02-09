@@ -5,6 +5,8 @@ static void testBIT()
 {
     addr14_t videoAddr;
 
+    static_assert(sizeof(_addr14_t)==sizeof(videoAddr),"BIT size error");
+
     //videoAddr=0xFFFF;
     videoAddr=0x3FFF;
     inc(videoAddr);
@@ -73,9 +75,9 @@ static void testBIT()
     puts("*** testBIT() passed! ***");
 
     _alutemp_t sum=0x1FF;
-    assert(cast<alu_t>(sum).isOverflow());
-    cast<alu_t>(sum).bitShr(1);
-    assert(cast<alu_t>(sum).isOverflow()==false);
+    assert(safe_cast<alu_t>(sum).isOverflow());
+    safe_cast<alu_t>(sum).bitShr(1);
+    assert(safe_cast<alu_t>(sum).isOverflow()==false);
 }
 
 enum PSW {
@@ -98,8 +100,9 @@ enum PSW {
 static void testFLAG()
 {
     FLAG<_reg8_t,PSW,8> P;
+    static_assert(sizeof(_reg8_t)==sizeof(P),"FLAG size error");
     printf("P=%X\n",ValueOf(P));
-    P.clear();
+    P.clearAll();
     assert(!P.any());
 
     P.set(F_ZERO);
@@ -113,25 +116,25 @@ static void testFLAG()
     //P.update(F_BCD,2);
     P.update(F_BCD,0);
 
-    P.clear();
+    P.clearAll();
     P|=F_NEGATIVE;
     P.set(F_BREAK);
     assert(P.query(F_MULTIPLE)==0x10);
-    P.bitCopy(0xFF);
+    P=0xFF;
     assert(P.query(F_MULTIPLE)==0x11);
     assert(P.query(F_MULTIPLE2)==0b10001);
     P.update(F_MULTIPLE2,0);
     assert(ValueOf(P)==0xFF-F_MULTIPLE2);
 
-    P.clear();
+    P.clearAll();
     P.update(F_MULTIPLE,0x11);
     assert(ValueOf(P)==F_MULTIPLE);
 
-    P.set();
+    P.setAll();
     P.copy(F_MULTIPLE3,0b1101,1);
     assert(ValueOf(P)==0x8F);
 
-    P.set();
+    P.setAll();
     assert(P.query(F_MULTIPLE2)==0x11);
     assert(P[F_MAX] && P.test(F_MULTIPLE));
     P.update(F_MULTIPLE2,0x10);
@@ -139,7 +142,7 @@ static void testFLAG()
     assert(P(F_MULTIPLE2)==0x10);
     assert(!P.test(F_MULTIPLE2));
 
-    P.clear();
+    P.clearAll();
     P.set(F_MULTIPLE3);
     P.inc(F_MULTIPLE3);
     assert(!P.any());

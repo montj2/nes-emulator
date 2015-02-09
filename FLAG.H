@@ -1,118 +1,134 @@
 template <typename T,typename ET,int bits>
 class FLAG {
     public:
-        typedef T                   DataTp,ValueTp;
-        typedef ET                  CheckTp,EnumTp;
-        // typedef FLAG<T,ET,bits>     SelfTp;
+        typedef T DataTp,ValueTp;
 
-        enum {
-            MASK=(DataTp)BIT_MASK(DataTp,bits)
+        enum :DataTp
+        {
+            MASK=BIT_MASK(DataTp,bits)
         };
-
-        FLAG(const FLAG& rhs) = delete; // rarely used
-        FLAG& operator =(const FLAG& rhs) = delete; // rarely used
-
-    private:
-        ValueTp set(const EnumTp e,const DataTp newValue); // FORBIDDEN
 
     protected:
         DataTp value;
 
+    private:
+        typedef ET CheckTp,EnumTp;
+
     public:
-        FLAG() = default;
+        FLAG() {clearAll();}
+        FLAG(const FLAG& rhs) = delete; // copy ctor rarely used
+        FLAG& operator =(const FLAG& rhs) = delete; // rarely used
 
         // bit converter
-        BIT<T,bits>* operator ->() {
-            return (BIT<T,bits>*)this;
-        }
-
-        BIT<T,bits>& toBIT() {
+        BIT<T,bits>& asBIT()
+        {
             return (BIT<T,bits>&)*this;
         }
 
         // setter
-        void bitCopy(const DataTp data) {
+        FLAG& operator =(const DataTp data)
+        {
             assert(0==(data&(~MASK)));
-            value=data;
+            this->value=data;
+            return *this;
         }
 
-        void bitCopy(const BIT<T,bits>& rhs) { // w/o checking
-            this->value=rhs.value;
+        FLAG& operator =(const BIT<T,bits>& rhs) // safe assignment
+        {
+            this->value=valueOf(rhs);
+            return *this;
         }
 
         // getter (no default getter provided)
         GENERATE_ALTERNATIVE_GETTER(FLAG)
 
-        // manipulate
-        bool any() const                      {return 0!=this->value;}
-
-        bool test(const EnumTp e) const       {return (this->value&e)==e;}
-
-        RETURNTYPE set(const EnumTp e)        {RETURN this->value|=e;}
-
-        RETURNTYPE clear(const EnumTp e)      {RETURN this->value&=(~e);}
-
-        RETURNTYPE set(const EnumTp e,const bool enabled) {
-            if (enabled)
-                RETURN this->value|=e;
-            else
-                RETURN this->value&=(~e);
+        // manipulation
+        bool any() const
+        {
+            return 0!=this->value;
         }
 
-        RETURNTYPE set()                      {RETURN this->value=MASK;}
+        bool test(const EnumTp e) const
+        {
+            return (this->value&e)==e;
+        }
 
-        RETURNTYPE clear()                    {RETURN this->value=0;}
-/*
-        RETURNTYPE setAll()                   {RETURN set();}
+        void flip(const EnumTp e)
+        {
+            this->value^=e;
+        }
 
-        RETURNTYPE clearAll()                 {RETURN clear();}
-*/
-        RETURNTYPE flip(const EnumTp e)       {RETURN this->value^=e;}
+        void set(const EnumTp e)
+        {
+            this->value|=e;
+        }
 
-        ValueTp query(const EnumTp e) const {
+        void clear(const EnumTp e)
+        {
+            this->value&=(~e);
+        }
+
+        void change(const EnumTp e,const bool enabled) {
+            if (enabled)
+                this->value|=e;
+            else
+                this->value&=(~e);
+        }
+
+        ValueTp change(const EnumTp e,const DataTp newValue) = delete;
+
+        void setAll()
+        {
+            this->value=MASK;
+        }
+
+        void clearAll()
+        {
+            this->value=0;
+        }
+
+        ValueTp query(const EnumTp e) const
+        {
             const DataTp d=(DataTp)e;
             return (this->value&d)/LOW_BIT(d);
         }
 
-        ValueTp update(const EnumTp _pos,const DataTp newValue) {
+        ValueTp update(const EnumTp _pos,const DataTp newValue)
+        {
             const DataTp pos=(DataTp)_pos;
             assert(0==(newValue&(~RTRIM(pos))));
             return this->value=(this->value&(~pos))|((newValue*LOW_BIT(pos))&pos);
         }
 
-        ValueTp inc(const EnumTp _pos) {
+        ValueTp inc(const EnumTp _pos)
+        {
             const DataTp pos=(DataTp)_pos;
-            #ifdef VERBOSE
-                assert(0!=(pos&(pos-1)));
-            #endif
+            vassert(0!=(pos&(pos-1)));
             this->value=(this->value&(~pos))|(((this->value&pos)+LOW_BIT(pos))&pos);
             return query(_pos);
         }
 
-        ValueTp copy(const EnumTp pos,const DataTp src,const int shift,const int length=1) {
-            #ifdef VERBOSE
-                assert(0==(BIT_MASK(DataTp,length)&(~RTRIM((DataTp)pos))));
-            #endif
+        ValueTp copy(const EnumTp pos,const DataTp src,const int shift,const int length=1)
+        {
+            vassert(0==(BIT_MASK(DataTp,length)&(~RTRIM((DataTp)pos))));
             return update(pos,(src>>shift)&BIT_MASK(DataTp,length));
         }
 
         // overloaded operators
-        FLAG& operator ^=(const EnumTp e) {
-            flip(e);
-            return *this;
-        }
-
-        FLAG& operator |=(const EnumTp rhs) {
+        FLAG& operator |=(const EnumTp rhs)
+        {
             set(rhs);
             return *this;
         }
 
-        FLAG& operator +=(const EnumTp rhs) {
-            set(rhs);
+        FLAG& operator ^=(const EnumTp rhs)
+        {
+            flip(rhs);
             return *this;
         }
 
-        FLAG& operator -=(const EnumTp rhs) {
+        FLAG& operator -=(const EnumTp rhs)
+        {
             clear(rhs);
             return *this;
         }
@@ -129,17 +145,15 @@ class FLAG {
         }
         */
 
-        bool operator [](const EnumTp e) const {
-            #ifdef VERBOSE
-                assert(0==(((DataTp)e)&(((DataTp)e)-1)));
-            #endif
+        bool operator [](const EnumTp e) const
+        {
+            vassert(0==(((DataTp)e)&(((DataTp)e)-1)));
             return test(e);
         }
 
-        ValueTp operator ()(const EnumTp e) const {
-            #ifdef VERBOSE
-                assert(0!=(((DataTp)e)&(((DataTp)e)-1)));
-            #endif
+        ValueTp operator ()(const EnumTp e) const
+        {
+            vassert(0!=(((DataTp)e)&(((DataTp)e)-1)));
             return query(e);
         }
 };

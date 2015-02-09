@@ -1,10 +1,40 @@
+#ifdef NDEBUG
+    // Release version
+#else
+    // Debug version
+    #define RARELY_USED
+    #ifdef COMPILE_ONLY
+        #define SAFE_CASTING
+    #endif
+#endif
+
+// Replace NULL with nullptr
 #ifdef NULL
     #undef NULL
     #define NULL nullptr
 #endif // NULL
 
+// Assertion
+#ifdef NDEBUG
+    #define assert(e) ((void)0)
+    #define vassert(e) ((void)0)
+#else
+    #ifndef RC_INVOKED
+        extern "C" {
+            _CRTIMP void __cdecl __MINGW_NOTHROW _assert (const char*, const char*, int) __MINGW_ATTRIB_NORETURN;
+        }
+    #endif
+    #define assert(e) if (e) {} else {__asm volatile("int3");_assert(#e, __FILE__, __LINE__);}
+    #ifdef VERBOSE
+        #define vassert(e) assert(e)
+    #else
+        #define vassert(e) ((void)0)
+    #endif
+#endif
+
 #define STATIC_ASSERT(expr) sizeof(int[(bool)(expr)?1:-1])
 
+// Type info
 template <typename T>
 class __BITSOF_CLASS {
 public:
@@ -33,34 +63,39 @@ public:
 // e.g. TYPE_MAX(int)=0xFFFFFFFF
 #define TYPE_MAX(TP) BIT_MASK(TP,TYPE_BITS(TP))
 
+// Bit manipulation
 #define LOW_BIT(x) ((x)&(-(x)))
 #define RTRIM(x) ((x)/LOW_BIT(x))
 
-#ifdef COMPILE_ONLY
-    #define FASTCAST(VAR,TP) (cast<TP>(VAR))
-    #define FASTCONSTCAST(VAR,TP) (cast<const TP>(VAR))
+// Type casting
+#ifdef SAFE_CASTING
+    #define FASTCAST(VAR,TP) (safe_cast<TP>(VAR))
+    #define FASTCONSTCAST(VAR,TP) (safe_cast<const TP>(VAR))
 #else
     #define FASTCAST(VAR,TP) ((TP&)*(TP*)(&VAR))
-    #define FASTCONSTCAST(VAR,TP) ((const TP&)*(TP*)(&VAR))
+    #define FASTCONSTCAST(VAR,TP) ((const TP&)*(TP*)(&(VAR)))
 #endif // COMPILE_ONLY
 template <typename destType,typename srcType>
-inline destType& cast(srcType& source)
+inline destType& safe_cast(srcType& source)
 {
     static_assert(sizeof(srcType)==sizeof(destType),"Casting can only be performed between types of the same size");
     return *(destType*)(&source);
 }
 
-#define valueOf(BIT_VAR) ((BIT_VAR).value)
+#ifdef SAFE_CASTING
+    #define valueOf(BIT_VAR) ValueOf(BIT_VAR)
+#else
+    #define valueOf(BIT_VAR) FASTCONSTCAST(BIT_VAR,typename std::remove_reference<decltype(BIT_VAR)>::type::ValueTp)
+#endif // SAFE_CASTING
 
+#define GENERATE_GETTER(CLASSNAME) operator ValueTp() const {return (ValueTp)(this->value);}
+#define GENERATE_ALTERNATIVE_GETTER(CLASSNAME) friend ValueTp ValueOf(const CLASSNAME& x) {return x.value;}
+#define GENERATE_SETTER(CLASSNAME) CLASSNAME& operator =(const CheckTp rhs)
+#define GENERATE_SETVALUE(NEWVALUE) this->value=(DataTp)(NEWVALUE)
+
+// Frequently used
 template <typename T>
 inline T min(const T& x,const T& y) {return x<y?x:y;}
 
 template <typename T>
 inline T max(const T& x,const T& y) {return x>y?x:y;}
-
-#define GENERATE_GETTER(CLASSNAME) operator ValueTp() const {return (ValueTp)(this->value);}
-#define GENERATE_ALTERNATIVE_GETTER(CLASSNAME) friend ValueTp ValueOf(const CLASSNAME& x) {return x.value;}
-#define GENERATE_SETTER(CLASSNAME) CLASSNAME& operator =(const CheckTp rhs)
-// #define GENERATE_CTOR(CLASSNAME,DEFAULTVALUE) CLASSNAME(const CheckTp initialValue=(CheckTp)(DEFAULTVALUE))
-#define GENERATE_SETVALUE(NEWVALUE) this->value=(DataTp)(NEWVALUE)
-// #define GENERATE_COPY_CTOR(CLASSNAME) CLASSNAME(const CLASSNAME& rhs) {this->value=rhs.value;}

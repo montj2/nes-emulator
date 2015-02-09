@@ -84,22 +84,22 @@ static inline word_t pop16bit()
 	return *(uint16_t*)&(stack[SP.minus(1)]);
 }
 
-#define SET_Z(result)   do {P.set(F_ZERO,(valueOf(result)==0));     } while(0)
-#define SET_N(result)   do {P.set(F_NEGATIVE,result.isNegative());  } while(0)
-#define SET_V(val)      do {P.set(F_OVERFLOW,val);                  } while(0)
+#define SET_Z(result)   do {P.change(F_ZERO,(valueOf(result)==0));     } while(0)
+#define SET_N(result)   do {P.change(F_NEGATIVE,result.isNegative());  } while(0)
+#define SET_V(val)      do {P.change(F_OVERFLOW,val);                  } while(0)
 #define SET_NZ(result)  do {SET_N(result);SET_Z(result);            } while(0)
 
 template <class T,int bits>
 static inline void copyNV(const BIT<T,bits>& operand)
 {
-    P.set(F_NEGATIVE,operand[7]);
-    P.set(F_OVERFLOW,operand[6]);
+    P.change(F_NEGATIVE,operand.bitAt(7));
+    P.change(F_OVERFLOW,operand.bitAt(6));
 }
 
 template <class T,int bits>
 static inline void ASL(BIT<T,bits>& operand) {
     // Arithmetic Shift Left
-    P.set(F_CARRY,operand.MSB());
+    P.change(F_CARRY,operand.MSB());
     operand.bitShl(1);
     SET_NZ(operand);
 }
@@ -107,7 +107,7 @@ static inline void ASL(BIT<T,bits>& operand) {
 template <class T,int bits>
 static inline void LSR(BIT<T,bits>& operand) {
     // Logical Shift Right
-    P.set(F_CARRY,operand.LSB());
+    P.change(F_CARRY,operand.LSB());
     operand.bitShr(1);
     SET_Z(operand);
     P.clear(F_SIGN);
@@ -118,7 +118,7 @@ static inline void ROL(BIT<T,bits>& operand) {
     // Rotate Left With Carry
     const bool newCarry=operand.MSB();
     operand.bitRcl(P[F_CARRY]);
-    P.set(F_CARRY,newCarry);
+    P.change(F_CARRY,newCarry);
     SET_NZ(operand);
 }
 
@@ -127,7 +127,7 @@ static inline void ROR(BIT<T,bits>& operand) {
     // Rotate Right With Carry
     const bool newCarry=operand.LSB();
     operand.bitRcr(P[F_CARRY]);
-    P.set(F_CARRY,newCarry);
+    P.change(F_CARRY,newCarry);
     SET_NZ(operand);
 }
 
@@ -311,8 +311,8 @@ int cpu_exec() // Emulates a single CPU instruction
                 temp+=value;
                 temp+=P[F_CARRY]?1:0;
 
-                P.set(F_OVERFLOW,!((A^value)&0x80) && ((A^temp)&0x80));
-                P.set(F_CARRY,SUM.isOverflow());
+                P.change(F_OVERFLOW,!((A^value)&0x80) && ((A^temp)&0x80));
+                P.change(F_CARRY,SUM.isOverflow());
             }else
             {
                 temp=A;
@@ -327,21 +327,21 @@ int cpu_exec() // Emulates a single CPU instruction
                 if ((temp&0xF)+(value&0xF)>9)
                 {
                     temp+=(value&15)+6;
-                    P.set(F_CARRY,true);
+                    P|=F_CARRY;
                 }else
                 {
                     temp+=(value&15);
-                    P.set(F_CARRY,false);
+                    P-=F_CARRY;
                 }
                 if ((temp>>4)+(value>>4)>9)
                 {
                     temp+=(value&0xF0)+6;
-                    P.set(F_OVERFLOW,true);
-                    P.set(F_CARRY,true);
+                    P|=F_OVERFLOW;
+                    P|=F_CARRY;
                 }else
                 {
                     temp+=(value&0xF0);
-                    P.set(F_OVERFLOW,false);
+                    P-=F_OVERFLOW;
                 }
             }
 
@@ -434,7 +434,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			value=read6502(addr);
 			temp=temp+0x100-value;
 			// if (temp>0xFF) [R]-[M]>=0 C=1;
-			P.set(F_CARRY,SUM.isOverflow());
+			P.change(F_CARRY,SUM.isOverflow());
 			temp=(temp-0x100)&0xFF;
 			SET_NZ(SUM);
 			break;
@@ -536,7 +536,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			break;
 
 		case M6502_INST::INS_PLP: // Pull processor status from stack
-			P.bitCopy(pop());
+			P=pop();
 			break;
 
 		case M6502_INST::INS_ROL: // Rotate one bit left
@@ -560,7 +560,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			break;
 
 		case M6502_INST::INS_RTI: // Return from interrupt. Pull status and PC from stack.
-			P.bitCopy(pop());
+			P=pop();
 			PC=pop16bit();
 			break;
 
@@ -577,8 +577,8 @@ int cpu_exec() // Emulates a single CPU instruction
 			temp-=value;
 			temp-=P[F_CARRY]?0:1;
 
-			P.set(F_OVERFLOW,!((A^value)&0x80) && ((A^temp)&0x80));
-			P.set(F_CARRY,!(SUM.isOverflow()));
+			P.change(F_OVERFLOW,!((A^value)&0x80) && ((A^temp)&0x80));
+			P.change(F_CARRY,!(SUM.isOverflow()));
 
 			regA.bitCopyAndWrap(temp);
 			SET_NZ(regA);
@@ -645,7 +645,7 @@ void cpu_reset()
     X=0;
     Y=0;
     SP.bitSetMax();
-    P.clear();
+    P.clearAll();
     P.set(F_NOTUSED);
 
     cycles=0;
@@ -685,7 +685,7 @@ void cpu_requestIRQ(enum IRQ_TYPE type)
 }
 
 void testCPU() {
-    P.clear();
+    P.clearAll();
 
     A=0;
     SET_Z(regA);
@@ -700,7 +700,7 @@ void testCPU() {
 
     value=0x10;
     temp=value<<4;
-    P.set(F_CARRY,SUM.isOverflow());
+    P.change(F_CARRY,SUM.isOverflow());
     assert(P[F_CARRY]);
 
     M=F_NEGATIVE;

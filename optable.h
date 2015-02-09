@@ -97,10 +97,8 @@ enum class M6502_INST : uint8_t
 /* 6502 Opcodes */
 struct M6502_OPCODE
 {
-	/* ENUM<uint8_t,M6502_INST,_INS_MAX> inst; */
 	M6502_INST inst;
     uint8_t cycles;
-    /* ENUM<uint8_t,M6502_ADDRMODE,_ADR_MAX> addrmode; */
     M6502_ADDRMODE addrmode;
     uint8_t size;
 };

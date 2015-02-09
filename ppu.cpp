@@ -89,15 +89,15 @@ unsigned long                   frame;
 static inline vaddr_t nt(vaddr_t addr);
 
 void ppu_reset() {
-	control1.clear();
-	control2.clear();
-	status.clear();
+	control1.clearAll();
+	control2.clearAll();
+	status.clearAll();
 
 	firstWrite=true;
 	spriteChanged=false;
 
-	address1.clear();
-	address2.clear();
+	address1.clearAll();
+	address2.clearAll();
 	ppu_sprAddress=0;
 	ppu_latch=0;
 	xoffset=0;
@@ -136,7 +136,7 @@ static void blt() {
 }
 
 static void beginFrame() {
-    if (control2[CTL2_BG_VISIBLE]) address1.bitCopy(ValueOf(scrollReg)); // apply scroll register
+    if (control2[CTL2_BG_VISIBLE]) address1=ValueOf(scrollReg); // apply scrolling
     // invalid frame buffer
     memset(vBuffer,0,sizeof(vBuffer));
 }
@@ -154,7 +154,7 @@ static void renderScanline(const unsigned long scanline) {
     assert(scanline<=239);
     if (!control2[CTL2_BG_VISIBLE]) return;
 
-    address1.set(ADDRREG_HNT,scrollReg[ADDRREG_HNT]);
+    address1.change(ADDRREG_HNT,scrollReg[ADDRREG_HNT]);
     address1.update(ADDRREG_HT,scrollReg(ADDRREG_HT));
 
     const unsigned long HScroll=(address1(ADDRREG_HT)<<3)+xoffset;
@@ -174,10 +174,10 @@ static void renderScanline(const unsigned long scanline) {
     const NESVRAM::NAMEATTRIB_TABLE::ATTRIB_TABLE *tabAtr;
     // find out which name table we will actually use
     vaddr_flag_t addrName;
-    addrName.clear();
+    addrName.clearAll();
     addrName.update(ADDRREG_BANK,2);
     addrName.update(ADDRREG_NT,control1(CTL1_CURNT));
-    addrName.bitCopy(nt(addrName.toBIT()));
+    addrName=nt(addrName.asBIT());
     tabName=&nameTable(addrName(ADDRREG_NT));
     tabAtr=&attribTable(addrName(ADDRREG_NT));
 
@@ -296,18 +296,14 @@ static void sprramWrite(const byte_t data) {
     inc(ppu_sprAddress);
 }
 
-void ppu_sramDMA(const uint8_t* src) {
-    #ifdef VERBOSE
-        assert(src!=NULL);
-    #endif // VERBOSE
+void ppu_sramDMA(const void* src) {
+    vassert(src!=NULL);
     memcpy(spriteMem.sprram_data,src,sizeof(spriteMem));
 }
 
-#define vaddr cast<vaddr_flag_t>(addr)
+#define vaddr safe_cast<vaddr_flag_t>(addr)
 static inline vaddr_t nt(vaddr_t addr) {
-    #ifdef VERBOSE
-        assert(vaddr(ADDRREG_BANK)==2); // [$2000,$3000)
-    #endif
+    vassert(vaddr(ADDRREG_BANK)==2); // [$2000,$3000)
     switch (mirroring) {
     case MIRROR_HORIZONTAL:
         vaddr.clear(ADDRREG_HNT);
@@ -333,7 +329,7 @@ static vaddr_t vramMirror(vaddr_t addr) {
         break;
     case 2: // [$2000,$3000)
         mirror2000:
-            vaddr.bitCopy(nt(addr));
+            vaddr=nt(addr);
         break;
     case 3: // [$3000,$4000)
         if (vaddr(ADDRREG_BANKOFFSET)<0xF00) {
@@ -341,9 +337,9 @@ static vaddr_t vramMirror(vaddr_t addr) {
             goto mirror2000;
         }
         // mirrorpal: [$3F00,$3FFF]
-        vaddr->bitAndEqual(0x3F1F);
+        vaddr.asBIT().bitAndEqual(0x3F1F);
         if (0==(ValueOf(vaddr)&0x3)) // $3F00=$3F04=$3F08=...
-            vaddr->bitAndEqual(0x3F00);
+            vaddr.asBIT().bitAndEqual(0x3F00);
         break;
     default:
         assert(0);
@@ -354,8 +350,8 @@ static vaddr_t vramMirror(vaddr_t addr) {
 #undef vdadr
 
 static vaddr_t incAddress1() {
-    const vaddr_t ret(address1.toBIT());
-    address1->add(control1[CTL1_VERTICAL32]?32:1);
+    const vaddr_t ret(address1);
+    address1.asBIT().add(control1[CTL1_VERTICAL32]?32:1);
     return ret;
 }
 
@@ -414,10 +410,10 @@ void ppu_regWrite(const maddr_t maddress,const byte_t data) {
     #endif
 	switch (valueOf(maddress)&0x7) {
     case 0: // $2000 PPU Control Register 1
-        control1.bitCopy(data);
+        control1=data;
         break;
     case 1: // $2001 PPU Control Register 2
-        control2.bitCopy(data);
+        control2=data;
         break;
     case 3: // $2003 Sprite RAM address
         setSprRamAddress(saddr_t::wrapper(data));
