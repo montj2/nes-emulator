@@ -1,5 +1,5 @@
 /* 6502 Addressing modes */
-enum class M6502_ADDRMODE : uint8_t
+enum M6502_ADDRMODE : uint8_t
 {
     ADR_ABS=0,
     ADR_ABSX,
@@ -22,7 +22,7 @@ enum class M6502_ADDRMODE : uint8_t
 };
 
 /* 6502 Instructions */
-enum class M6502_INST : uint8_t
+enum M6502_INST : uint8_t
 {
     INS_ADC=0,
     INS_AND,

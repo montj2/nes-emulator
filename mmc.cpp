@@ -1,13 +1,13 @@
 #include "macro.h"
 #include "datatype.h"
-#include "nes.h"
+#include "rominfo.h"
 #include "mmc.h"
 #include "ppu.h"
 
 struct NESRAM ram;
 
 int reg8,regA,regC,regE;
-int p8,pA,rC,pE; // addresses of prg-rom banks currently selected.
+int p8,pA,rC,pE; // addresses of currently selected prg-rom banks.
 int prevBSSrc[8]; // used to ensure that it doesn't bankswitch when the correct bank is already selected
 
 void mmc_setupbanks(const char* gameImage)
@@ -40,7 +40,7 @@ int mmc_bankswitch(int dest,int src,int count)
             if (c>0)
             {
 copylastbanks:
-                if (!ppu_copyBanks(dest+last,src+last,c)) return 0;
+                if (!PpuCopyBanks(dest+last,src+last,c)) return 0;
                 c=0;
             }
             last=i+1;
@@ -50,7 +50,7 @@ copylastbanks:
     return 1;
 }
 
-void mmc_reset()
+void MmcReset()
 {
     p8=pA=rC=pE=-1;
     memset(prevBSSrc,-1,sizeof(prevBSSrc));
@@ -110,6 +110,7 @@ byte_t loadZp(const addr8_t zp)
 
 word_t loadZp16bit(const addr8_t zp)
 {
+    assert(zp.isNotMax());
 	return *(uint16_t*)&(zeropage[valueOf(zp)]);
 }
 
@@ -120,7 +121,7 @@ byte_t read6502(const maddr_t Address)
     case 0: //[$0000,$2000)
         return ram.bank0[valueOf(Address)&0x7FF];
     case 1: //[$2000,$4000) PPU Registers
-		return ppu_regLoad(Address);
+		return PpuLoadReg(Address);
         break;
     case 2: //[$4000,$6000)
         return 0;
@@ -168,7 +169,7 @@ void write6502(const maddr_t Address,const byte_t Value)
         ram.bank0[valueOf(Address)&0x7FF]=Value;
 		break;
     case 1: //[$2000,$4000) PPU Registers
-		ppu_regWrite(Address,Value);
+		PpuWriteReg(Address,Value);
 		break;
     case 3: //[$6000,$8000) SRAM
         // if (specialwrite6000)
@@ -183,7 +184,7 @@ void write6502(const maddr_t Address,const byte_t Value)
     case 2: //[$4000,$6000) Other Registers
         switch (valueOf(Address)) {
             case 0x4014:
-                ppu_sramDMA(&ram.ram_page[Value][0]);
+                PpuWriteSramDMA(&ram.ram_page[Value][0]);
                 break;
         }
         break;
@@ -193,10 +194,10 @@ void write6502(const maddr_t Address,const byte_t Value)
     }
 }
 
-void testMMC()
+void MmcSelfTest()
 {
     static_assert(sizeof(ram)==0x10000,"RAM struct error");
     static_assert(&ram.bank6[0]-&ram.ram_data[0]==0x6000,"RAM struct error");
 
-    printf("[MMC] System memory is at %p.\n",&ram.ram_data[0]);
+    printf("[MMC] System memory at 0x%p\n",&ram.ram_data[0]);
 }

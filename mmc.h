@@ -23,9 +23,11 @@ extern struct NESRAM ram;
 #define stack ram.stack
 #define zeropage ram.zeropage
 
+void MmcSelfTest();
+
 void mmc_setupbanks(const char* gameImage);
 int mmc_bankswitch(int dest,int src,int count);
-void mmc_reset();
+void MmcReset();
 int mmc_setup(uint8_t mapperType,const void* gameImage);
 void write6502(const maddr_t Address,const byte_t Value);
 byte_t read6502(const maddr_t Address);

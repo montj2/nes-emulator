@@ -1,11 +1,10 @@
 #include "macro.h"
 #include "datatype.h"
-#include "nes.h"
+#include "rominfo.h"
 #include "mmc.h"
 #include "ppu.h"
 #include "optable.h"
 #include "cpu.h"
-#include "unittest.h"
 
 /*ENUM<uint32_t,MIRRORING,MIRROR_MAX>*/
 MIRRORING                   mirroring;
@@ -83,7 +82,7 @@ onerror:
     return 1;
 }
 
-int ppu_copyBanks(int dest,int src,int count)
+int PpuCopyBanks(int dest,int src,int count)
 {
     if (mapperType==0)
     {
@@ -96,24 +95,25 @@ int ppu_copyBanks(int dest,int src,int count)
 static void
 init()
 {
+    // Self-test (Only Static Assertions)
+    OptSelfTest();
+    MmcSelfTest();
+    PpuSelfTest();
+
     #ifndef NDEBUG
         // Run Unit Tests
+        extern void BITTests();
         BITTests();
-
-        testCPU();
-        testMMC();
-        testPPU();
+        CpuTests();
+        PpuTests();
     #endif
-
-    // Self-test
-    OptSelfTest();
 
     // Module Initialization
     OptInit();
 
-    mmc_reset();
-    ppu_reset();
-    ppu_loadPal();
+    MmcReset();
+    PpuReset();
+    PpuLoadPal();
 }
 
 int main()
@@ -124,11 +124,11 @@ int main()
     #ifndef COMPILE_ONLY
         loadRom("nestest.nes");
         mmc_setup(mapperType,gameImage);
-        cpu_reset();
+        CpuReset();
 
         for (int i=1;i<=1000;i++) {
             printf("--- Frame %d ---\n",i);
-            cpu_frame();
+            CpuRunFrame();
         }
     #endif
     return 0;

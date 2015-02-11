@@ -1,6 +1,5 @@
 #include "macro.h"
 #include "datatype.h"
-#include "nes.h"
 #include <windows.h>
 
 void ui_blit32(const rgb32_t buffer[],const int width,const int height) {

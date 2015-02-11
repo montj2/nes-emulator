@@ -153,7 +153,8 @@ class FLAG {
 
         ValueTp operator ()(const EnumTp e) const
         {
-            vassert(0!=(((DataTp)e)&(((DataTp)e)-1)));
+            // TODO: fix bug
+            vassert(0!=(((DataTp)e)&(((DataTp)e)-1))/* && (DataTp)e==(((DataTp)e)&MASK))*/);
             return query(e);
         }
 };

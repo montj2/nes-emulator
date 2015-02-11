@@ -1,6 +1,6 @@
 #include "macro.h"
 #include "datatype.h"
-#include "nes.h"
+#include "rominfo.h"
 #include "cpu.h"
 #include "ui.h"
 #include "ppu.h"
@@ -88,7 +88,7 @@ unsigned long                   frame;
 
 static inline vaddr_t nt(vaddr_t addr);
 
-void ppu_reset() {
+void PpuReset() {
 	control1.clearAll();
 	control2.clearAll();
 	status.clearAll();
@@ -215,7 +215,7 @@ static void renderScanline(const unsigned long scanline) {
 static void startVBlank() {
     status.set(STATUS_VBLANK);
     // Do NMI:
-    if (control1[CTL1_NMI]) cpu_requestIRQ(IRQ_NMI);
+    if (control1[CTL1_NMI]) CpuRequestIRQ(IRQ::NMI);
     // Present
     presentFrame();
 }
@@ -229,7 +229,7 @@ static void startHBlank() {
 
 }
 
-bool ppu_endScanline() {
+bool PpuHSync() {
     if (scanline==0)  beginFrame();
 
     printf("---- SCANLINE %ld ----\n",scanline);
@@ -296,7 +296,7 @@ static void sprramWrite(const byte_t data) {
     inc(ppu_sprAddress);
 }
 
-void ppu_sramDMA(const void* src) {
+void PpuWriteSramDMA(const void* src) {
     vassert(src!=NULL);
     memcpy(spriteMem.sprram_data,src,sizeof(spriteMem));
 }
@@ -381,10 +381,8 @@ static void vramWrite(const byte_t data) {
     printf("[PPU] Write %X to 0x%04x\n",data,valueOf(addr));
 }
 
-byte_t ppu_regLoad(const maddr_t maddress) {
-    #ifdef VERBOSE
-        assert(1==(valueOf(maddress)>>13)); // [$2000,$4000)
-	#endif
+byte_t PpuLoadReg(const maddr_t maddress) {
+    vassert(1==(valueOf(maddress)>>13)); // [$2000,$4000)
 	switch (valueOf(maddress)&0x7) {
 		case 2: // $2002 PPU Status Register
 			return readStatusRegister();
@@ -404,10 +402,8 @@ byte_t ppu_regLoad(const maddr_t maddress) {
 	return ppu_latch;
 }
 
-void ppu_regWrite(const maddr_t maddress,const byte_t data) {
-    #ifdef VERBOSE
-        assert(1==(valueOf(maddress)>>13)); // [$2000,$4000)
-    #endif
+void PpuWriteReg(const maddr_t maddress,const byte_t data) {
+    vassert(1==(valueOf(maddress)>>13)); // [$2000,$4000)
 	switch (valueOf(maddress)&0x7) {
     case 0: // $2000 PPU Control Register 1
         control1=data;
@@ -438,7 +434,7 @@ void ppu_regWrite(const maddr_t maddress,const byte_t data) {
 	}
 }
 
-void ppu_loadPal() {
+void PpuLoadPal() {
     pal32[ 0] = Rgb32(117,117,117);
     pal32[ 1] = Rgb32( 39, 27,143);
     pal32[ 2] = Rgb32(  0,  0,171);
@@ -505,7 +501,8 @@ void ppu_loadPal() {
     pal32[63] = Rgb32(  0,  0,  0);
 }
 
-void testPPU() {
+void PpuSelfTest()
+{
     static_assert(sizeof(vram)==0x4000,"VRAM struct error");
 	static_assert(sizeof(vram.vrom.patternTable)==0x2000,"VRAM struct error");
 	static_assert(&vram.name_attrib[0].attribTable.attrib[0]-&vram.vram_data[0]==0x23C0,"VRAM struct error");
@@ -513,39 +510,47 @@ void testPPU() {
 	static_assert(&vram.pal_data[0]-&vram.vram_data[0]==0x3F00,"VRAM struct error");
 	static_assert(sizeof(sprite)==0x100,"SprRAM struct error");
 
-	printf("[PPU] VRAM is at %p.\n",&vram.vram_data[0]);
+	printf("[PPU] VRAM at 0x%p\n",&vram.vram_data[0]);
+}
 
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x1395)))==0x1395);
+static void _fun(vaddr_t left, _addr14_t right, bool opposite=false)
+{
+    assert(valueOf(left)==right || opposite);
+}
+
+void PpuTests()
+{
+    _fun(vramMirror(vaddr_t::wrapper(0x1395)),0x1395);
 
     mirroring=MIRROR_HORIZONTAL;
     /*
     this.defineMirrorRegion(0x2400,0x2000,0x400);
     this.defineMirrorRegion(0x2c00,0x2800,0x400);
     */
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2011)))==0x2011);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x22FF)))==0x22FF);
+    _fun(vramMirror(vaddr_t::wrapper(0x2011)),0x2011);
+    _fun(vramMirror(vaddr_t::wrapper(0x22FF)),0x22FF);
 
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2409)))==0x2009);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2409)))==0x2009);
+    _fun(vramMirror(vaddr_t::wrapper(0x2409)),0x2009);
+    _fun(vramMirror(vaddr_t::wrapper(0x2409)),0x2009);
 
     //printf("%X\n",vramMirror(vaddr_t::wrapper(0x2871)());
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2871)))==0x2871);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2AF1)))==0x2AF1);
+    _fun(vramMirror(vaddr_t::wrapper(0x2871)),0x2871);
+    _fun(vramMirror(vaddr_t::wrapper(0x2AF1)),0x2AF1);
 
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2D22)))==0x2922);
+    _fun(vramMirror(vaddr_t::wrapper(0x2D22)),0x2922);
 
     mirroring=MIRROR_VERTICAL;
     /*
     this.defineMirrorRegion(0x2800,0x2000,0x400);
     this.defineMirrorRegion(0x2c00,0x2400,0x400);
     */
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2011)))==0x2011);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x22FF)))==0x22FF);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2405)))==0x2405);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2677)))==0x2677);
+    _fun(vramMirror(vaddr_t::wrapper(0x2011)),0x2011);
+    _fun(vramMirror(vaddr_t::wrapper(0x22FF)),0x22FF);
+    _fun(vramMirror(vaddr_t::wrapper(0x2405)),0x2405);
+    _fun(vramMirror(vaddr_t::wrapper(0x2677)),0x2677);
 
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x28A3)))==0x20A3);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2FFF)))==0x27FF);
+    _fun(vramMirror(vaddr_t::wrapper(0x28A3)),0x20A3);
+    _fun(vramMirror(vaddr_t::wrapper(0x2FFF)),0x27FF);
 
     mirroring=MIRROR_SINGLESCREEN;
     /*
@@ -553,19 +558,19 @@ void testPPU() {
     this.defineMirrorRegion(0x2800,0x2000,0x400);
     this.defineMirrorRegion(0x2c00,0x2000,0x400);
     */
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2D70)))==0x2170);
+    _fun(vramMirror(vaddr_t::wrapper(0x2D70)),0x2170);
 
     mirroring=MIRROR_FOURSCREEN;
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x2FED)))==0x2FED);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x3AED)))==0x2AED);
+    _fun(vramMirror(vaddr_t::wrapper(0x2FED)),0x2FED);
+    _fun(vramMirror(vaddr_t::wrapper(0x3AED)),0x2AED);
 
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x3F9F)))==0x3F1F);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x3F04)))==0x3F00);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x3F08)))==0x3F00);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x3F0C)))==0x3F00);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x3F18)))==0x3F00);
-    assert(valueOf(vramMirror(vaddr_t::wrapper(0x3F19)))==0x3F19);
-    //assert(valueOf(vramMirror(vaddr_t::wrapper(0xFF19)))==0x3F19);
+    _fun(vramMirror(vaddr_t::wrapper(0x3F9F)),0x3F1F);
+    _fun(vramMirror(vaddr_t::wrapper(0x3F04)),0x3F00);
+    _fun(vramMirror(vaddr_t::wrapper(0x3F08)),0x3F00);
+    _fun(vramMirror(vaddr_t::wrapper(0x3F0C)),0x3F00);
+    _fun(vramMirror(vaddr_t::wrapper(0x3F18)),0x3F00);
+    _fun(vramMirror(vaddr_t::wrapper(0x3F19)),0x3F19);
+    //_fun(vramMirror(vaddr_t::wrapper(0xFF19)),0x3F19);
 
     puts("**** testPPU() passed ***");
 }

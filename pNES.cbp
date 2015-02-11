@@ -101,7 +101,6 @@
 		<Unit filename="main.cpp" />
 		<Unit filename="mmc.cpp" />
 		<Unit filename="mmc.h" />
-		<Unit filename="nes.h" />
 		<Unit filename="optable.cpp" />
 		<Unit filename="optable.h" />
 		<Unit filename="pch.h">
@@ -110,9 +109,9 @@
 		</Unit>
 		<Unit filename="ppu.cpp" />
 		<Unit filename="ppu.h" />
+		<Unit filename="rominfo.h" />
 		<Unit filename="ui.cpp" />
 		<Unit filename="ui.h" />
-		<Unit filename="unittest.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />

@@ -1,7 +1,6 @@
 #include "macro.h"
 #include "datatype.h"
 #include "optable.h"
-#include "nes.h"
 #include "mmc.h"
 #include "ppu.h"
 #include "cpu.h"
@@ -43,12 +42,12 @@ const unsigned long maxCycles=114;
 
 /* Statistics */
 long long insCount;
-long long opCount[(int)M6502_INST::_INS_MAX];
-long long adrCount[(int)M6502_ADDRMODE::_ADR_MAX];
+long long opCount[(int)_INS_MAX];
+long long adrCount[(int)_ADR_MAX];
 
 /* IRQ */
 bool irqRequested;
-enum IRQ_TYPE irqType;
+enum IRQ irqType;
 
 bool DebugMode=false;
 #define asmprintf if (DebugMode) printf
@@ -137,14 +136,14 @@ static void doNMI() {
     PC=loadOperand16bit(VECTOR_NMI); // NMI
 }
 
-int cpu_exec() // Emulates a single CPU instruction
+int CpuExecOneInst() // Emulates a single CPU instruction
 {
     // IRQ processing
     if (irqRequested)
     {
         switch (irqType)
         {
-            case IRQ_NMI:
+            case IRQ::NMI:
                 doNMI();
                 break;
             default:
@@ -152,7 +151,7 @@ int cpu_exec() // Emulates a single CPU instruction
                 break;
         }
         irqRequested=false;
-        irqType=IRQ_NONE;
+        irqType=IRQ::NONE;
     }
 
 	// ------------------------------------------------------
@@ -178,16 +177,16 @@ int cpu_exec() // Emulates a single CPU instruction
 
 	switch (opinf.addrmode)
 	{
-		case M6502_ADDRMODE::ADR_IMP: // Ignore. Address is implied in instruction.
+		case ADR_IMP: // Ignore. Address is implied in instruction.
 			break;
 
-		case M6502_ADDRMODE::ADR_ZP: // Zero Page mode. Use the address given after the opcode, but without high byte.
+		case ADR_ZP: // Zero Page mode. Use the address given after the opcode, but without high byte.
 			asmprintf(" $%02X",loadOperand(PC));
 			addr=loadOperand(PC);
 			inc(PC);
 			break;
 
-		case M6502_ADDRMODE::ADR_REL: // Relative mode.
+		case ADR_REL: // Relative mode.
 			//asmprintf(" +/-%02X",loadOperand(PC));
 			addr=loadOperand(PC);
 			inc(PC);
@@ -198,19 +197,19 @@ int cpu_exec() // Emulates a single CPU instruction
 			asmprintf(" to %04X",valueOf(addr));
 		    break;
 
-		case M6502_ADDRMODE::ADR_ABS: // Absolute mode. Use the two bytes following the opcode as an address.
+		case ADR_ABS: // Absolute mode. Use the two bytes following the opcode as an address.
 			asmprintf(" $%04X",loadOperand16bit(PC));
 			addr=loadOperand16bit(PC);
 			PC.add(2);
 			break;
 
-		case M6502_ADDRMODE::ADR_IMM: //Immediate mode. The value is given after the opcode.
+		case ADR_IMM: //Immediate mode. The value is given after the opcode.
 			asmprintf(" #$%02X",loadOperand(PC));
 			addr=PC;
 			inc(PC);
 			break;
 
-		case M6502_ADDRMODE::ADR_ZPX:
+		case ADR_ZPX:
 			// Zero Page Indexed mode, X as index. Use the address given
 			// after the opcode, then add the
 			// X register to it to get the final address.
@@ -220,7 +219,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			inc(PC);
 			break;
 
-		case M6502_ADDRMODE::ADR_ZPY:
+		case ADR_ZPY:
 			// Zero Page Indexed mode, Y as index. Use the address given
 			// after the opcode, then add the
 			// Y register to it to get the final address.
@@ -230,7 +229,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			inc(PC);
 			break;
 
-		case M6502_ADDRMODE::ADR_ABSX:
+		case ADR_ABSX:
 			// Absolute Indexed Mode, X as index. Same as zero page
 			// indexed, but with the high byte.
 			asmprintf(" $%04X,X=%02X",loadOperand16bit(PC),(uint8_t)X);
@@ -239,7 +238,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			addr.add(X);
 			break;
 
-		case M6502_ADDRMODE::ADR_ABSY:
+		case ADR_ABSY:
 			// Absolute Indexed Mode, Y as index. Same as zero page
 			// indexed, but with the high byte.
 			asmprintf(" $%04X,Y=%02X",loadOperand16bit(PC),(uint8_t)Y);
@@ -248,7 +247,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			addr.add(Y);
 			break;
 
-		case M6502_ADDRMODE::ADR_INDX:
+		case ADR_INDX:
 			asmprintf(" ($%02X,X=%02X)",loadOperand(PC),(uint8_t)X);
 			//addr=loadZp16bit((loadOperand(PC++)+X)&0xFF);
 			addr=loadOperand(PC);
@@ -258,7 +257,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			inc(PC);
 			break;
 
-		case M6502_ADDRMODE::ADR_INDY:
+		case ADR_INDY:
 			asmprintf(" ($%02X),Y=%02X",loadOperand(PC),(uint8_t)Y);
 			addr=loadZp16bit(addr8_t::wrapper(loadOperand(PC)));
 			if ((valueOf(addr)&0xFF00)!=((valueOf(addr)+Y)&0xFF00) && opinf.cycles==5) cycleAdd=1;
@@ -266,7 +265,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			inc(PC);
 			break;
 
-		case M6502_ADDRMODE::ADR_IND:
+		case ADR_IND:
 			// Indirect Absolute mode. Find the 16-bit address contained
 			// at the given location.
 			asmprintf(" ($%04X)",loadOperand16bit(PC));
@@ -279,7 +278,7 @@ int cpu_exec() // Emulates a single CPU instruction
 			asmprintf(" UNHANDLED ADDRESSING MODE");
 			break;
 	}
-	if (opinf.addrmode!=M6502_ADDRMODE::ADR_IMP)
+	if (opinf.addrmode!=ADR_IMP)
     {
         asmprintf("\t// %s\n",ExplainAddrMode(opinf.addrmode));
         addr.checkAssert();
@@ -302,7 +301,7 @@ int cpu_exec() // Emulates a single CPU instruction
 
 	switch (opinf.inst)
 	{
-		case M6502_INST::INS_ADC: // Add with carry.
+		case INS_ADC: // Add with carry.
 
 		    if (!P[F_BCD]) // binary add
             {
@@ -349,23 +348,23 @@ int cpu_exec() // Emulates a single CPU instruction
 			SET_NZ(regA);
 			break;
 
-		case M6502_INST::INS_AND: // AND memory with accumulator.
+		case INS_AND: // AND memory with accumulator.
 			value=read6502(addr);
 			regA.bitAndEqual(value);
 			SET_NZ(regA);
 			break;
 
-		case M6502_INST::INS_ASLA: // Shift left one bit
+		case INS_ASLA: // Shift left one bit
 		    ASL(regA);
 			break;
 
-		case M6502_INST::INS_ASL:
+		case INS_ASL:
 			value=read6502(addr);
 			ASL(M);
 			write6502(addr,value);
 			break;
 
-		case M6502_INST::INS_BCC: // Branch on carry clear
+		case INS_BCC: // Branch on carry clear
 			if (!P[F_CARRY])
 			{
 			jBranch:
@@ -373,22 +372,22 @@ int cpu_exec() // Emulates a single CPU instruction
 				PC=addr;
 			}
 			break;
-		case M6502_INST::INS_BCS: // Branch on carry set
+		case INS_BCS: // Branch on carry set
 			if (P[F_CARRY]) goto jBranch;else break;
-		case M6502_INST::INS_BEQ: // Branch on zero
+		case INS_BEQ: // Branch on zero
 			if (P[F_ZERO]) goto jBranch;else break;
-		case M6502_INST::INS_BMI: // Branch on negative result
+		case INS_BMI: // Branch on negative result
 			if (P[F_SIGN]) goto jBranch;else break;
-		case M6502_INST::INS_BNE: // Branch on not zero
+		case INS_BNE: // Branch on not zero
 			if (!P[F_ZERO]) goto jBranch;else break;
-		case M6502_INST::INS_BPL: // Branch on positive result
+		case INS_BPL: // Branch on positive result
 			if (!P[F_SIGN]) goto jBranch;else break;
-		case M6502_INST::INS_BVC: // Branch on overflow clear
+		case INS_BVC: // Branch on overflow clear
 			if (!P[F_OVERFLOW]) goto jBranch;else break;
-		case M6502_INST::INS_BVS: // Branch on overflow set
+		case INS_BVS: // Branch on overflow set
 			if (P[F_OVERFLOW]) goto jBranch;else break;
 
-		case M6502_INST::INS_BRK: // Break
+		case INS_BRK: // Break
 			inc(PC);
 			PUSH_PC();
 			P.set(F_BREAK);
@@ -397,36 +396,36 @@ int cpu_exec() // Emulates a single CPU instruction
 			PC=loadOperand16bit(VECTOR_IRQ); // IRQ/BRK
 			break;
 
-		case M6502_INST::INS_BIT:
+		case INS_BIT:
 			value=read6502(addr);
 			copyNV(M);
 			M.bitAndEqual(A);
 			SET_Z(M);
 			break;
 
-		case M6502_INST::INS_CLC: // Clear carry flag
+		case INS_CLC: // Clear carry flag
 			P.clear(F_CARRY);
 			break;
-		case M6502_INST::INS_CLD: // Clear decimal flag
+		case INS_CLD: // Clear decimal flag
 		    P.clear(F_DECIMAL);
 			break;
-        case M6502_INST::INS_CLI: // Clear interrupt flag
+        case INS_CLI: // Clear interrupt flag
             P.clear(F_INTERRUPT_OFF);
             break;
-		case M6502_INST::INS_CLV: // Clear overflow flag
+		case INS_CLV: // Clear overflow flag
 		    P.clear(F_OVERFLOW);
 			break;
 
-		case M6502_INST::INS_CMP: // Compare memory and accumulator
-		case M6502_INST::INS_CPX: // Compare memory and index X
-		case M6502_INST::INS_CPY: // Compare memory and index Y
+		case INS_CMP: // Compare memory and accumulator
+		case INS_CPX: // Compare memory and index X
+		case INS_CPY: // Compare memory and index Y
 			switch (opinf.inst)
 			{
-				case M6502_INST::INS_CMP:
+				case INS_CMP:
 					temp=A;break;
-				case M6502_INST::INS_CPX:
+				case INS_CPX:
 					temp=X;break;
-				case M6502_INST::INS_CPY:
+				case INS_CPY:
 					temp=Y;break;
                 default:
                     break;
@@ -439,137 +438,137 @@ int cpu_exec() // Emulates a single CPU instruction
 			SET_NZ(SUM);
 			break;
 
-		case M6502_INST::INS_DEC: // Decrement memory by one
+		case INS_DEC: // Decrement memory by one
 			value=read6502(addr);
 			dec(M);
 			write6502(addr,value);
 			SET_NZ(M);
 			break;
 
-		case M6502_INST::INS_DEX: // Decrement index X by one
+		case INS_DEX: // Decrement index X by one
 		    dec(regX);
 			SET_NZ(regX);
 			break;
 
-		case M6502_INST::INS_DEY: // Decrement index Y by one
+		case INS_DEY: // Decrement index Y by one
 			dec(regY);
 			SET_NZ(regY);
 			break;
 
-		case M6502_INST::INS_EOR: // XOR Memory with accumulator, store in accumulator
+		case INS_EOR: // XOR Memory with accumulator, store in accumulator
 			value=read6502(addr);
 			regA.bitXorEqual(value);
 			SET_NZ(regA);
 			break;
 
-		case M6502_INST::INS_INC: // Increment memory by one
+		case INS_INC: // Increment memory by one
 			value=read6502(addr);
 			inc(M);
 			write6502(addr,value);
 			SET_NZ(M);
 			break;
 
-		case M6502_INST::INS_INX: // Increment index X by one
+		case INS_INX: // Increment index X by one
 			inc(regX);SET_NZ(regX);
 			break;
 
-		case M6502_INST::INS_INY: // Increment index Y by one
+		case INS_INY: // Increment index Y by one
 			inc(regY);SET_NZ(regY);
 			break;
 
-		case M6502_INST::INS_JMP: // Jump to new location
+		case INS_JMP: // Jump to new location
 			PC=addr;
 			break;
 
-		case M6502_INST::INS_JSR: // Jump to new location, saving return address. Push return address on stack
+		case INS_JSR: // Jump to new location, saving return address. Push return address on stack
 			dec(PC);
 			PUSH_PC();
 			PC=addr;
 			break;
 
-		case M6502_INST::INS_LDA: // Load accumulator with memory
-		case M6502_INST::INS_LDX: // Load index X with memory
-		case M6502_INST::INS_LDY: // Load index Y with memory
+		case INS_LDA: // Load accumulator with memory
+		case INS_LDX: // Load index X with memory
+		case INS_LDY: // Load index Y with memory
 			value=read6502(addr);
 			SET_NZ(M);
 			switch (opinf.inst)
 			{
-				case M6502_INST::INS_LDA:
+				case INS_LDA:
 					A=value;break;
-				case M6502_INST::INS_LDX:
+				case INS_LDX:
 					X=value;break;
-				case M6502_INST::INS_LDY:
+				case INS_LDY:
 					Y=value;break;
                 default:
                     break;
 			}
 			break;
 
-		case M6502_INST::INS_LSR: // Shift right one bit
+		case INS_LSR: // Shift right one bit
 			value=read6502(addr);
 			LSR(M);
 			write6502(addr,value);
 			break;
 
-		case M6502_INST::INS_LSRA:
+		case INS_LSRA:
 		    LSR(regA);
 			break;
 
-		case M6502_INST::INS_NOP: break; // No OPeration
-		case M6502_INST::INS_ORA: // OR memory with accumulator, store in accumulator.
+		case INS_NOP: break; // No OPeration
+		case INS_ORA: // OR memory with accumulator, store in accumulator.
 			value=read6502(addr);
 			regA.bitOrEqual(value);
 			SET_NZ(regA);
 			break;
 
-		case M6502_INST::INS_PHA: // Push accumulator on stack
+		case INS_PHA: // Push accumulator on stack
 			PUSH_REG(A);
 			break;
 
-		case M6502_INST::INS_PHP: // Push processor status on stack
+		case INS_PHP: // Push processor status on stack
 			PUSH_REG(ValueOf(P));
 			break;
 
-		case M6502_INST::INS_PLA: // Pull accumulator from stack
+		case INS_PLA: // Pull accumulator from stack
 			A=pop();
 			SET_NZ(regA);
 			break;
 
-		case M6502_INST::INS_PLP: // Pull processor status from stack
+		case INS_PLP: // Pull processor status from stack
 			P=pop();
 			break;
 
-		case M6502_INST::INS_ROL: // Rotate one bit left
+		case INS_ROL: // Rotate one bit left
 			value=read6502(addr);
 			ROL(M);
 			write6502(addr,value);
 			break;
 
-		case M6502_INST::INS_ROLA:
+		case INS_ROLA:
 		    ROL(regA);
 			break;
 
-		case M6502_INST::INS_ROR: // Rotate one bit right
+		case INS_ROR: // Rotate one bit right
 		    value=read6502(addr);
 			ROR(M);
 			write6502(addr,value);
 			break;
 
-		case M6502_INST::INS_RORA:
+		case INS_RORA:
 			ROR(regA);
 			break;
 
-		case M6502_INST::INS_RTI: // Return from interrupt. Pull status and PC from stack.
+		case INS_RTI: // Return from interrupt. Pull status and PC from stack.
 			P=pop();
 			PC=pop16bit();
 			break;
 
-		case M6502_INST::INS_RTS: // Return from subroutine. Pull PC from stack.
+		case INS_RTS: // Return from subroutine. Pull PC from stack.
 			PC=pop16bit();
 			inc(PC);
 			break;
 
-		case M6502_INST::INS_SBC: // Subtract
+		case INS_SBC: // Subtract
 			assert(!P[F_BCD]);
 
 			value=read6502(addr);
@@ -584,45 +583,45 @@ int cpu_exec() // Emulates a single CPU instruction
 			SET_NZ(regA);
 			break;
 
-		case M6502_INST::INS_SEC: // Set carry flag
+		case INS_SEC: // Set carry flag
 		    P.set(F_CARRY);
 			break;
-		case M6502_INST::INS_SED: // Set decimal flag
+		case INS_SED: // Set decimal flag
 			P.set(F_DECIMAL);
 			break;
-		case M6502_INST::INS_SEI: // Set interrupt disable status
+		case INS_SEI: // Set interrupt disable status
 		    P.set(F_INTERRUPT_OFF);
 			break;
 
-		case M6502_INST::INS_STA: // Store accumulator in memccpy
+		case INS_STA: // Store accumulator in memccpy
 			write6502(addr,A);
 			break;
-		case M6502_INST::INS_STX: // Store index X in memory
+		case INS_STX: // Store index X in memory
 			write6502(addr,X);
 			break;
-		case M6502_INST::INS_STY: // Store index Y in memory
+		case INS_STY: // Store index Y in memory
 			write6502(addr,Y);
 			break;
-		case M6502_INST::INS_TAX: // Transfer accumulator to index X
+		case INS_TAX: // Transfer accumulator to index X
 			X=A;
 			SET_NZ(regX);
 			break;
-		case M6502_INST::INS_TAY: // Transfer accumulator to index Y
+		case INS_TAY: // Transfer accumulator to index Y
 			Y=A;
 			SET_NZ(regY);
 			break;
-		case M6502_INST::INS_TSX: // Transfer stack pointer to index X
+		case INS_TSX: // Transfer stack pointer to index X
 			X=valueOf(SP);
 			SET_NZ(regX);
 			break;
-		case M6502_INST::INS_TXA: // Transfer index X to accumulator
+		case INS_TXA: // Transfer index X to accumulator
 			A=X;
 			SET_NZ(regA);
 			break;
-		case M6502_INST::INS_TXS: // Transfer index X to stack pointer
+		case INS_TXS: // Transfer index X to stack pointer
 			SP=X;
 			break;
-		case M6502_INST::INS_TYA: // Transfer index Y to accumulator
+		case INS_TYA: // Transfer index Y to accumulator
 			A=Y;
 			SET_NZ(regA);
 			break;
@@ -639,7 +638,7 @@ int cpu_exec() // Emulates a single CPU instruction
 	return cycleAdd+opinf.cycles;
 }
 
-void cpu_reset()
+void CpuReset()
 {
     A=0;
     X=0;
@@ -651,7 +650,7 @@ void cpu_reset()
     cycles=0;
 
     irqRequested=false;
-    irqType=IRQ_NONE;
+    irqType=IRQ::NONE;
 
     PC=loadOperand16bit(VECTOR_RESET); // RESET
     printf("[CPU] PC reset to $%04X\n",valueOf(PC));
@@ -661,30 +660,28 @@ void cpu_reset()
 	memset(adrCount,0,sizeof(adrCount));
 }
 
-int cpu_frame() {
-    int isRunning=1;
-    while (isRunning)
+int CpuRunFrame()
+{
+    while (1)
     {
-        while (cycles>maxCycles)
+        while (cycles>maxCycles && !PpuHSync())
         {
             cycles-=maxCycles;
-            if (ppu_endScanline())
-                break; // frame ends
         }
-        cycles+=cpu_exec();
+        cycles+=CpuExecOneInst();
     }
     return 1;
 }
 
-void cpu_requestIRQ(enum IRQ_TYPE type)
+void CpuRequestIRQ(enum IRQ type)
 {
     // assert $2000 D7
-    assert(type!=IRQ_NONE);
+    assert(type!=IRQ::NONE);
     irqRequested=true;
     irqType=type;
 }
 
-void testCPU() {
+void CpuTests() {
     P.clearAll();
 
     A=0;

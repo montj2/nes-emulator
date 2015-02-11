@@ -49,11 +49,14 @@ extern struct NESSPRRAM spriteMem;
 #define nameTable(index)  vram.name_attrib[index].nameTable
 #define attribTable(index) vram.name_attrib[index].attribTable
 
-int ppu_copyBanks(int dest,int src,int count);
-void ppu_reset();
+void PpuTests();
+void PpuSelfTest();
 
-byte_t ppu_regLoad(const maddr_t maddress);
-void ppu_regWrite(const maddr_t maddress,const byte_t data);
-void ppu_sramDMA(const void* src);
-void ppu_loadPal();
-bool ppu_endScanline();
+int PpuCopyBanks(int dest,int src,int count);
+void PpuReset();
+
+byte_t PpuLoadReg(const maddr_t maddress);
+void PpuWriteReg(const maddr_t maddress,const byte_t data);
+void PpuWriteSramDMA(const void* src);
+void PpuLoadPal();
+bool PpuHSync();

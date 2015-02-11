@@ -1,4 +1,4 @@
-// T should be one of unsigned basic data types
+// T must be one of unsigned basic data types
 template <typename T,int bits>
 class BIT {
     public:
