@@ -576,6 +576,7 @@ int CpuExecOneInst() // Emulates a single CPU instruction
 			temp-=value;
 			temp-=P[F_CARRY]?0:1;
 
+            // TODO: fix bug
 			P.change(F_OVERFLOW,!((A^value)&0x80) && ((A^temp)&0x80));
 			P.change(F_CARRY,!(SUM.isOverflow()));
 

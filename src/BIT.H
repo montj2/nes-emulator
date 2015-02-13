@@ -60,7 +60,8 @@ class BIT {
         GENERATE_ALTERNATIVE_GETTER(BIT)
 
         // checked wrapper
-        static BIT wrapper(const CheckTp rhs) {
+        static BIT wrapper(const CheckTp rhs)
+        {
             BIT ret;
             ret=rhs;
             return ret;
@@ -72,6 +73,7 @@ class BIT {
             GENERATE_SETVALUE(rhs);
             assert(0==(value&(~MASK)));
         }
+
 
         // setter (lhs = CheckType)
         GENERATE_SETTER(BIT)

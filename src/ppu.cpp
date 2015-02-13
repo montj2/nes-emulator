@@ -378,7 +378,9 @@ static void vramWrite(const byte_t data) {
         assert(addr>=0x3F00 && addr<=0x3F1F);
         printf("[PPU] WritePal %X to 0x%04x\n",data,valueOf(addr));
     }
-    printf("[PPU] Write %X to 0x%04x\n",data,valueOf(addr));
+    #ifdef PPU_MONITOR_IO
+        printf("[PPU] Write %X to 0x%04x\n",data,valueOf(addr));
+    #endif
 }
 
 byte_t PpuLoadReg(const maddr_t maddress) {
@@ -513,7 +515,7 @@ void PpuSelfTest()
 	printf("[PPU] VRAM at 0x%p\n",&vram.vram_data[0]);
 }
 
-static void _fun(vaddr_t left, _addr14_t right, bool opposite=false)
+static inline void _fun(vaddr_t left, _addr14_t right, bool opposite=false)
 {
     assert(valueOf(left)==right || opposite);
 }

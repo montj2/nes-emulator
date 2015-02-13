@@ -114,6 +114,13 @@ word_t loadZp16bit(const addr8_t zp)
 	return *(uint16_t*)&(zeropage[valueOf(zp)]);
 }
 
+
+uint8_t joystick1_pos;
+#define VK_LEFT	37
+#define VK_UP	38
+#define VK_RIGHT	39
+#define VK_DOWN	40
+extern "C" int __stdcall GetAsyncKeyState(int);
 byte_t read6502(const maddr_t Address)
 {
     switch (valueOf(Address)>>13)
@@ -124,6 +131,34 @@ byte_t read6502(const maddr_t Address)
 		return PpuLoadReg(Address);
         break;
     case 2: //[$4000,$6000)
+        switch (valueOf(Address))
+        {
+        case 0x4016:
+            switch (joystick1_pos++)
+            {
+        case 2: // SELECT
+                if (GetAsyncKeyState(32)) return 0x41;else return 0;
+                break;
+        case 3: // START
+                if (GetAsyncKeyState(13)) return 0x41;else return 0;
+                break;
+
+            case 4:
+                if (GetAsyncKeyState(VK_UP)) return 0x41;else return 0;
+                break;
+            case 5:
+                if (GetAsyncKeyState(VK_DOWN)) return 0x41;else return 0;
+                break;
+            case 6:
+                if (GetAsyncKeyState(VK_LEFT)) return 0x41;else return 0;
+                break;
+            case 7:
+                if (GetAsyncKeyState(VK_RIGHT)) return 0x41;else return 0;
+                break;
+
+            }
+            break;
+        }
         return 0;
         break;
 
@@ -185,6 +220,14 @@ void write6502(const maddr_t Address,const byte_t Value)
         switch (valueOf(Address)) {
             case 0x4014:
                 PpuWriteSramDMA(&ram.ram_page[Value][0]);
+                break;
+            case 0x4016:
+            case 0x4017:
+                // printf("[IOReg] Write to 0x%04x: %x\n",valueOf(Address),Value);
+                if (!(Value&1)) // reset joystick
+                {
+                    joystick1_pos=0;
+                }
                 break;
         }
         break;

@@ -122,7 +122,7 @@ int main()
     init();
 
     #ifndef COMPILE_ONLY
-        loadRom("nestest.nes");
+        loadRom("..\\test\\nestest.nes");
         mmc_setup(mapperType,gameImage);
         CpuReset();
 
