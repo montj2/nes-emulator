@@ -171,9 +171,11 @@ int CpuExecOneInst() // Emulates a single CPU instruction
 	#endif
 	//fprintf(log,"%X <%X> #%I64d\n",opcode,opaddr,opCount);
 
-    //if (valueOf(opaddr)==0xC009 || valueOf(opaddr)==0x0C00C) DebugMode=false;else DebugMode=true;
+    //if (valueOf(opaddr)==0xE247)
+    //    DebugMode=true;
     asmprintf("[CPU] CIA = %04X %02X\t%s",valueOf(opaddr),opcode,GetInstName(opinf.inst));
     assert(IsUsualOp(opcode));
+    assert(P[F_NOTUSED]);
 
 	switch (opinf.addrmode)
 	{
@@ -216,6 +218,7 @@ int CpuExecOneInst() // Emulates a single CPU instruction
 			asmprintf(" $%02X,X=%02X",loadOperand(PC),(uint8_t)X);
 			addr=loadOperand(PC);
 			addr.add(X);
+			addr.bitAndEqual(0xFF);
 			inc(PC);
 			break;
 
@@ -225,7 +228,8 @@ int CpuExecOneInst() // Emulates a single CPU instruction
 			// Y register to it to get the final address.
 			asmprintf(" $%02X,Y=%02X",loadOperand(PC),(uint8_t)Y);
 			addr=loadOperand(PC);
-			addr.add(Y);addr.bitAndEqual(0xFF);
+			addr.add(Y);
+			addr.bitAndEqual(0xFF);
 			inc(PC);
 			break;
 
@@ -303,8 +307,10 @@ int CpuExecOneInst() // Emulates a single CPU instruction
 	{
 		case INS_ADC: // Add with carry.
 
+            goto IgnoreBCD;
 		    if (!P[F_BCD]) // binary add
             {
+IgnoreBCD:
                 temp=A;
                 value=read6502(addr);
                 temp+=value;
@@ -325,11 +331,11 @@ int CpuExecOneInst() // Emulates a single CPU instruction
                 // add low digit
                 if ((temp&0xF)+(value&0xF)>9)
                 {
-                    temp+=(value&15)+6;
+                    temp+=(value&0xF)+6;
                     P|=F_CARRY;
                 }else
                 {
-                    temp+=(value&15);
+                    temp+=(value&0xF);
                     P-=F_CARRY;
                 }
                 if ((temp>>4)+(value>>4)>9)
@@ -536,6 +542,7 @@ int CpuExecOneInst() // Emulates a single CPU instruction
 
 		case INS_PLP: // Pull processor status from stack
 			P=pop();
+			P.set(F_NOTUSED);
 			break;
 
 		case INS_ROL: // Rotate one bit left
@@ -560,6 +567,7 @@ int CpuExecOneInst() // Emulates a single CPU instruction
 
 		case INS_RTI: // Return from interrupt. Pull status and PC from stack.
 			P=pop();
+			P.set(F_NOTUSED);
 			PC=pop16bit();
 			break;
 
@@ -576,9 +584,8 @@ int CpuExecOneInst() // Emulates a single CPU instruction
 			temp-=value;
 			temp-=P[F_CARRY]?0:1;
 
-            // TODO: fix bug
-			P.change(F_OVERFLOW,!((A^value)&0x80) && ((A^temp)&0x80));
-			P.change(F_CARRY,!(SUM.isOverflow()));
+            P.change(F_CARRY,!(SUM.isOverflow()));
+            P.change(F_OVERFLOW,((A^value)&0x80) && ((A^temp)&0x80));
 
 			regA.bitCopyAndWrap(temp);
 			SET_NZ(regA);
@@ -654,6 +661,7 @@ void CpuReset()
     irqType=IRQ::NONE;
 
     PC=loadOperand16bit(VECTOR_RESET); // RESET
+
     printf("[CPU] PC reset to $%04X\n",valueOf(PC));
 
 	insCount=0;

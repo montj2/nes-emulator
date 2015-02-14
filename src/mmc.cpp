@@ -98,8 +98,9 @@ byte_t loadOperand(const maddr_t pc)
 word_t loadOperand16bit(const maddr_t pc)
 {
     #ifdef DEP
-        assert((valueOf(pc)>>15)==1 && pc.isNotMax());
+        assert((valueOf(pc)>>15)==1);
     #endif
+    assert(pc.isNotMax());
 	return *(uint16_t*)&(ram.ram_data[valueOf(pc)]);
 }
 
@@ -110,7 +111,14 @@ byte_t loadZp(const addr8_t zp)
 
 word_t loadZp16bit(const addr8_t zp)
 {
-    assert(zp.isNotMax());
+    #ifndef ALLOW_ADDRESS_WRAP
+        assert(zp.isNotMax());
+    #else
+        if (zp.isMax())
+        {
+            return ( ((uint16_t)zeropage[0])<<8)|zeropage[valueOf(zp)];
+        }
+    #endif
 	return *(uint16_t*)&(zeropage[valueOf(zp)]);
 }
 

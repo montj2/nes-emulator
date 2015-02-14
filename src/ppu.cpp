@@ -371,7 +371,9 @@ static byte_t vramLoad() {
 static void vramWrite(const byte_t data) {
     const vaddr_t addr=vramMirror(incAddress1());
     ppu_latch=data;firstWrite=true; // different implementation
-    assert(addr>=0x2000);
+    #ifdef DEP
+        assert(addr>=0x2000);
+    #endif
     vram.vram_data[addr]=data;
     if (addr>=0x3000)
     {
