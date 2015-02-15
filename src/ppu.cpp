@@ -338,8 +338,8 @@ static vaddr_t vramMirror(vaddr_t addr) {
         }
         // mirrorpal: [$3F00,$3FFF]
         vaddr.asBIT().bitAndEqual(0x3F1F);
-        if (0==(ValueOf(vaddr)&0x3)) // $3F00=$3F04=$3F08=...
-            vaddr.asBIT().bitAndEqual(0x3F00);
+        //if (0==(ValueOf(vaddr)&0x3)) // $3F00=$3F04=$3F08=...
+        //    vaddr.asBIT().bitAndEqual(0x3F00);
         break;
     default:
         assert(0);
@@ -569,10 +569,12 @@ void PpuTests()
     _fun(vramMirror(vaddr_t::wrapper(0x3AED)),0x2AED);
 
     _fun(vramMirror(vaddr_t::wrapper(0x3F9F)),0x3F1F);
+    /*
     _fun(vramMirror(vaddr_t::wrapper(0x3F04)),0x3F00);
     _fun(vramMirror(vaddr_t::wrapper(0x3F08)),0x3F00);
     _fun(vramMirror(vaddr_t::wrapper(0x3F0C)),0x3F00);
     _fun(vramMirror(vaddr_t::wrapper(0x3F18)),0x3F00);
+    */
     _fun(vramMirror(vaddr_t::wrapper(0x3F19)),0x3F19);
     //_fun(vramMirror(vaddr_t::wrapper(0xFF19)),0x3F19);
 
