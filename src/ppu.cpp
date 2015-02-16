@@ -231,8 +231,9 @@ static void startHBlank() {
 
 bool PpuHSync() {
     if (scanline==0)  beginFrame();
-
-    printf("---- SCANLINE %ld ----\n",scanline);
+    #ifdef MONITOR_SCANLINE
+        printf("---- SCANLINE %ld ----\n",scanline);
+    #endif
     startHBlank();
     if (scanline<=239) renderScanline(scanline);
     if (scanline>=240) status.set(STATUS_VBLANK);

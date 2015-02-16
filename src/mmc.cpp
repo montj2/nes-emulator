@@ -12,13 +12,10 @@ int prevBSSrc[8]; // used to ensure that it doesn't bankswitch when the correct 
 
 void mmc_setupbanks(const char* gameImage)
 {
-    memcpy(ram.bankC,&gameImage[0],0x4000);
-    /*
     if (p8!=reg8) memcpy(ram.bank8,&gameImage[reg8*0x2000],0x2000);
     if (pA!=regA) memcpy(ram.bankA,&gameImage[regA*0x2000],0x2000);
     if (rC!=regC) memcpy(ram.bankC,&gameImage[regC*0x2000],0x2000);
     if (pE!=regE) memcpy(ram.bankE,&gameImage[regE*0x2000],0x2000);
-    */
     p8=reg8;
     pA=regA;
     rC=regC;
@@ -139,34 +136,6 @@ byte_t read6502(const maddr_t Address)
 		return PpuLoadReg(Address);
         break;
     case 2: //[$4000,$6000)
-        switch (valueOf(Address))
-        {
-        case 0x4016:
-            switch (joystick1_pos++)
-            {
-        case 2: // SELECT
-                if (GetAsyncKeyState(32)) return 0x41;else return 0;
-                break;
-        case 3: // START
-                if (GetAsyncKeyState(13)) return 0x41;else return 0;
-                break;
-
-            case 4:
-                if (GetAsyncKeyState(VK_UP)) return 0x41;else return 0;
-                break;
-            case 5:
-                if (GetAsyncKeyState(VK_DOWN)) return 0x41;else return 0;
-                break;
-            case 6:
-                if (GetAsyncKeyState(VK_LEFT)) return 0x41;else return 0;
-                break;
-            case 7:
-                if (GetAsyncKeyState(VK_RIGHT)) return 0x41;else return 0;
-                break;
-
-            }
-            break;
-        }
         return 0;
         break;
 
@@ -202,10 +171,9 @@ static void mapperWrite(const maddr_t Address,const byte_t Value)
 
 void write6502(const maddr_t Address,const byte_t Value)
 {
-    if (valueOf(Address)==0x2007 && (Value==0 || Value==0x24) ) goto dontlog;
-
-    printf("* Write %X to $%X *\n",Value,valueOf(Address));
-    dontlog:
+    #ifdef MONITOR_RAM_IO
+        printf("* Write %X to $%X *\n",Value,valueOf(Address));
+    #endif
 	switch (valueOf(Address)>>13)
     {
     case 0: //[$0000,$2000) Internal RAM

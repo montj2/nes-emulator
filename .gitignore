@@ -30,3 +30,7 @@
 # Auto-generated files
 *.depend
 *.layout
+
+# NES roms
+*.nes
+*.rom

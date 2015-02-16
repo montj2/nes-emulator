@@ -6,7 +6,6 @@
 #include "optable.h"
 #include "cpu.h"
 
-/*ENUM<uint32_t,MIRRORING,MIRROR_MAX>*/
 MIRRORING                   mirroring;
 uint8_t                     mapperType;
 uint8_t                     prgCount,chrCount;
@@ -110,7 +109,6 @@ init()
 
     // Module Initialization
     OptInit();
-
     MmcReset();
     PpuReset();
     PpuLoadPal();

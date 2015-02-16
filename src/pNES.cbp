@@ -79,7 +79,7 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 			<Add option="-include pch.h" />
-			<Add option="-DALLOW_ADDRESS_WRAP" />
+			<Add option="-DDEP" />
 		</Compiler>
 		<Linker>
 			<Add library="libgdi32" />
