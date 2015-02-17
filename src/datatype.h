@@ -60,5 +60,5 @@ inline word_t makeWord(const byte_t pageoffset,const byte_t pagenumber) {
 }
 
 inline rgb32_t Rgb32(const byte_t r,const byte_t g,const byte_t b) {
-    return r|(g<<8)|(b<<16);
+    return b|(g<<8)|(r<<16);
 }

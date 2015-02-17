@@ -120,7 +120,7 @@ int main()
     init();
 
     #ifndef COMPILE_ONLY
-        loadRom("..\\test\\nestest.nes");
+        loadRom("..\\test\\mario.nes");
         mmc_setup(mapperType,gameImage);
         CpuReset();
 

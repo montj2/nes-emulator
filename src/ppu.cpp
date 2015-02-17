@@ -126,7 +126,6 @@ static ioreg_t readStatusRegister() {
 
 static void blt() {
     rgb32_t p32[32];
-    // TODO: MIRRORING
     for (int i=0;i<32;i++) p32[i]=pal32[vram.pal_data[i]];
     rgb32_t* vBuf32=vBuffer32;
     const palindex_t* vBufIdx=&vBuffer[0][0];
@@ -339,8 +338,9 @@ static vaddr_t vramMirror(vaddr_t addr) {
         }
         // mirrorpal: [$3F00,$3FFF]
         vaddr.asBIT().bitAndEqual(0x3F1F);
-        //if (0==(ValueOf(vaddr)&0x3)) // $3F00=$3F04=$3F08=...
-        //    vaddr.asBIT().bitAndEqual(0x3F00);
+        // now [$3F00,$3F1F]
+        if (0==ValueOf(vaddr)&0xF)
+            vaddr.asBIT().bitAndEqual(0x3F00);
         break;
     default:
         assert(0);
@@ -380,6 +380,10 @@ static void vramWrite(const byte_t data) {
     {
         assert(addr>=0x3F00 && addr<=0x3F1F);
         printf("[PPU] WritePal %X to 0x%04x\n",data,valueOf(addr));
+        if (addr&0xF==0)
+        {
+            vram.vram_data[addr^0x10]=data;
+        }
     }
     #ifdef PPU_MONITOR_IO
         printf("[PPU] Write %X to 0x%04x\n",data,valueOf(addr));
