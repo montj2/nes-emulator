@@ -25,10 +25,10 @@ extern struct NESRAM ram;
 
 void MmcSelfTest();
 
-void mmc_setupbanks(const char* gameImage);
-int mmc_bankswitch(int dest,int src,int count);
+void MmcSetupBanks(const char* gameImage);
+int MmcBankSwitch(int dest,int src,int count);
 void MmcReset();
-int mmc_setup(uint8_t mapperType,const void* gameImage);
+int MmcSetup(uint8_t mapperType,const void* gameImage);
 void write6502(const maddr_t Address,const byte_t Value);
 byte_t read6502(const maddr_t Address);
 byte_t readCode(const maddr_t pc);

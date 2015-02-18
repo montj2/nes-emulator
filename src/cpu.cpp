@@ -53,32 +53,43 @@ bool DebugMode=false;
 #define asmprintf if (DebugMode) printf
 //#define asmprintf(...) (void)0
 
-#define PUSH_8(byte) do { \
-    printf("* PushReg %02X to %02X *\n",byte,valueOf(SP)); \
-    stack[valueOf(SP)]=(byte); \
-    dec(SP); \
-    assert(SP.isNotMax()); \
-    } while(0)
+static inline void PUSH_8(byte_t byte) {
+    #ifdef MONITOR_STACK
+        printf("* PushReg %02X to %02X *\n",byte,valueOf(SP));
+    #endif
+    stack[valueOf(SP)]=(byte);
+    dec(SP);
+    #ifndef ALLOW_ADDRESS_WRAP
+        assert(SP.isNotMax());
+    #endif
+}
 
-#define PUSH_16(word) do { \
-    dec(SP); \
-    printf("* PushWord %04X to %02X *\n",word,valueOf(SP)); \
-    *(uint16_t*)&(stack[valueOf(SP)])=(word); \
-    dec(SP); \
-    assert(SP.isNotMax()); \
-    } while(0)
+static inline void PUSH_16(word_t word) {
+    dec(SP);
+    #ifdef MONITOR_STACK
+        printf("* PushWord %04X to %02X *\n",word,valueOf(SP));
+    #endif
+    *(uint16_t*)&(stack[valueOf(SP)])=(word);
+    dec(SP);
+    #ifndef ALLOW_ADDRESS_WRAP
+        assert(SP.isNotMax());
+    #endif
+}
 
 #define PUSH_REG(byte)  do {PUSH_8(byte);        } while(0)
 #define PUSH_PC()       do {PUSH_16(valueOf(PC));} while(0)
 
 static inline byte_t pop() {
-    assert(SP.isNotMax());
+    #ifndef ALLOW_ADDRESS_WRAP
+        assert(SP.isNotMax());
+    #endif
     return stack[inc(SP)];
 }
 
-static inline word_t pop16bit()
-{
-	assert(SP.isNotMax() && SP.plus(1).isNotMax());
+static inline word_t pop16bit() {
+    #ifndef ALLOW_ADDRESS_WRAP
+        assert(SP.isNotMax() && SP.plus(1).isNotMax());
+	#endif
 	SP.add(2);
 	return *(uint16_t*)&(stack[SP.minus(1)]);
 }
@@ -89,8 +100,7 @@ static inline word_t pop16bit()
 #define SET_NZ(result)  do {SET_N(result);SET_Z(result);            } while(0)
 
 template <class T,int bits>
-static inline void copyNV(const BIT<T,bits>& operand)
-{
+static inline void copyNV(const BIT<T,bits>& operand) {
     P.change(F_NEGATIVE,operand.bitAt(7));
     P.change(F_OVERFLOW,operand.bitAt(6));
 }
@@ -169,10 +179,7 @@ int CpuExecOneInst() // Emulates a single CPU instruction
         ++opCount[(int)opinf.inst];
         ++adrCount[(int)opinf.addrmode];
 	#endif
-	//fprintf(log,"%X <%X> #%I64d\n",opcode,opaddr,opCount);
 
-    //if (valueOf(opaddr)==0xE247)
-    //    DebugMode=true;
     asmprintf("[CPU] CIA = %04X %02X\t%s",valueOf(opaddr),opcode,GetInstName(opinf.inst));
     assert(IsUsualOp(opcode));
     assert(P[F_NOTUSED]);
@@ -673,20 +680,18 @@ int CpuRunFrame()
 {
     while (1)
     {
-        while (cycles>maxCycles && !PpuHSync())
+        while (cycles>maxCycles)
         {
+            if (PpuHSync()) return 1;
             cycles-=maxCycles;
         }
         cycles+=CpuExecOneInst();
     }
-    return 1;
 }
 
 void CpuRequestIRQ(enum IRQ type)
 {
-    // assert $2000 D7
-    assert(type!=IRQ::NONE);
-    irqRequested=true;
+    irqRequested=(type!=IRQ::NONE);
     irqType=type;
 }
 

@@ -19,12 +19,7 @@
     #define assert(e) ((void)0)
     #define vassert(e) ((void)0)
 #else
-    #ifndef RC_INVOKED
-        extern "C" {
-            _CRTIMP void __cdecl __MINGW_NOTHROW _assert (const char*, const char*, int) __MINGW_ATTRIB_NORETURN;
-        }
-    #endif
-    #define assert(e) if (e) {} else {__asm volatile("int3");_assert(#e, __FILE__, __LINE__);}
+    #define assert(e) if (e) {} else {__asm volatile("int3");}
     #ifdef VERBOSE
         #define vassert(e) assert(e)
     #else

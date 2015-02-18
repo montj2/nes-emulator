@@ -146,7 +146,6 @@ static void presentFrame() {
 
 static void endFrame() {
     frame++;
-    printf("======= FRAME %ld =======\n",frame);
 }
 
 static void renderScanline(const unsigned long scanline) {
@@ -272,7 +271,9 @@ static void setVRAMAddress(const byte_t byte) {
     }else { // 8 lower bits
         address1.update(ADDRREG_LOWBYTE,byte);
     }
-    printf("ADDRESS1 <- %X\n",ValueOf(address1));
+    #ifdef MONITOR_VRAM_IO
+        printf("ADDRESS1 <- %X\n",ValueOf(address1));
+    #endif
     firstWrite=!firstWrite;
 }
 
@@ -339,11 +340,6 @@ static vaddr_t vramMirror(vaddr_t addr) {
         // mirrorpal: [$3F00,$3FFF]
         vaddr.asBIT().bitAndEqual(0x3F1F);
         // now [$3F00,$3F1F]
-        if (0==ValueOf(vaddr)&0xF)
-            vaddr.asBIT().bitAndEqual(0x3F00);
-        break;
-    default:
-        assert(0);
         break;
     }
     return addr;
@@ -379,13 +375,15 @@ static void vramWrite(const byte_t data) {
     if (addr>=0x3000)
     {
         assert(addr>=0x3F00 && addr<=0x3F1F);
-        printf("[PPU] WritePal %X to 0x%04x\n",data,valueOf(addr));
-        if (addr&0xF==0)
+        #ifdef MONITOR_VRAM_IO
+            printf("[PPU] WritePal %X to 0x%04x\n",data,valueOf(addr));
+        #endif
+        if ((addr&0xF)==0)
         {
             vram.vram_data[addr^0x10]=data;
         }
     }
-    #ifdef PPU_MONITOR_IO
+    #ifdef MONITOR_VRAM_IO
         printf("[PPU] Write %X to 0x%04x\n",data,valueOf(addr));
     #endif
 }

@@ -1,5 +1,4 @@
-enum MIRRORING
-{
+enum MIRRORING {
     MIRROR_HORIZONTAL=0,
     MIRROR_VERTICAL=1,
     MIRROR_FOURSCREEN,
@@ -20,6 +19,6 @@ enum ROMCONTROL2 {
     RCTL2_MAPPERHIGH=0xF0
 };
 
-extern MIRRORING /*ENUM<uint32_t,MIRRORING,MIRROR_MAX>*/ mirroring;
+extern MIRRORING mirroring;
 extern FLAG<uint8_t,ROMCONTROL1> RomCtrl;
 extern FLAG<uint8_t,ROMCONTROL2> RomCtrl2;

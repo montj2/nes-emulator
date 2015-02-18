@@ -10,40 +10,26 @@ int reg8,regA,regC,regE;
 int p8,pA,rC,pE; // addresses of currently selected prg-rom banks.
 int prevBSSrc[8]; // used to ensure that it doesn't bankswitch when the correct bank is already selected
 
-void mmc_setupbanks(const char* gameImage)
+void MmcSetupBanks(const char* gameImage)
 {
     if (p8!=reg8) memcpy(ram.bank8,&gameImage[reg8*0x2000],0x2000);
     if (pA!=regA) memcpy(ram.bankA,&gameImage[regA*0x2000],0x2000);
     if (rC!=regC) memcpy(ram.bankC,&gameImage[regC*0x2000],0x2000);
     if (pE!=regE) memcpy(ram.bankE,&gameImage[regE*0x2000],0x2000);
-    p8=reg8;
-    pA=regA;
-    rC=regC;
+    p8=reg8;pA=regA;rC=regC;
     pE=regE;
 }
 
-int mmc_bankswitch(int dest,int src,int count)
+int MmcBankSwitch(int dest,int src,int count)
 {
-    int i,last,c;
-    for (i=last=c=0; i<count; i++)
+    for (int i=0; i<count; i++)
     {
         if (prevBSSrc[dest+i]!=src+i)
         {
             prevBSSrc[dest+i]=src+i;
-            ++c;
-        }
-        else
-        {
-            if (c>0)
-            {
-copylastbanks:
-                if (!PpuCopyBanks(dest+last,src+last,c)) return 0;
-                c=0;
-            }
-            last=i+1;
+            PpuCopyBanks(dest+i,src+i,1);
         }
     }
-    if (c>0) goto copylastbanks;
     return 1;
 }
 
@@ -55,17 +41,17 @@ void MmcReset()
     // TODO: FILL WITH 0XCC
 }
 
-int mmc_setup(uint8_t mapperType,const void* gameImage)
+int MmcSetup(uint8_t mapperType,const void* gameImage)
 {
     switch (mapperType)
     {
     case 0: // Direct Access
-        mmc_bankswitch(0,0,8);
+        MmcBankSwitch(0,0,8);
         reg8=0;
         regA=1;
         regC=2;
         regE=3;
-        mmc_setupbanks((const char*)gameImage);
+        MmcSetupBanks((const char*)gameImage);
         return 1;
     default:
         return 0;
@@ -121,11 +107,7 @@ word_t loadZp16bit(const addr8_t zp)
 
 
 uint8_t joystick1_pos;
-#define VK_LEFT	37
-#define VK_UP	38
-#define VK_RIGHT	39
-#define VK_DOWN	40
-extern "C" int __stdcall GetAsyncKeyState(int);
+
 byte_t read6502(const maddr_t Address)
 {
     switch (valueOf(Address)>>13)

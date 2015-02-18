@@ -62,7 +62,7 @@ loadRom(const char* filename)
         if (1!=fread(trainerData,512,1,fp)) goto incomplete;
     }
 
-    gameImage=(char*)malloc(prgCount*0x4000);
+    gameImage=malloc(prgCount*0x4000);
     assert(gameImage!=NULL);
     if (prgCount!=fread(gameImage,0x4000,prgCount,fp))
     {
@@ -121,7 +121,7 @@ int main()
 
     #ifndef COMPILE_ONLY
         loadRom("..\\test\\mario.nes");
-        mmc_setup(mapperType,gameImage);
+        MmcSetup(mapperType,gameImage);
         CpuReset();
 
         for (int i=1;i<=1000;i++) {
