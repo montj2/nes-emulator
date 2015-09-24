@@ -78,9 +78,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="macros.h" />
     <ClInclude Include="nes\internals.h" />
     <ClInclude Include="stdafx.h" />
