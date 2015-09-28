@@ -88,6 +88,7 @@ void TestFramework::runAll()
 	{
 		puts("[-] ALL TEST CASES PASSED!");
 	}
+	puts("");
 }
 
 void TestFramework::deleteAll()

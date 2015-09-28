@@ -68,5 +68,8 @@
     <ClCompile Include="nes\mmc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="nes\romloader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

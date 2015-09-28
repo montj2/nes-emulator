@@ -66,6 +66,13 @@ inline destType& safe_cast(srcType& source)
 #endif
 
 template <typename T>
+void SAFE_DELETE(T*& mem)
+{
+	delete mem;
+	mem = nullptr;
+}
+
+template <typename T>
 inline T min(const T& x,const T& y) {return x<y?x:y;}
 
 template <typename T>

@@ -28,14 +28,28 @@ static void init()
 	resetMMC();
 }
 
+static void deinit()
+{
+	unloadRom();
+}
+
 int _cdecl _tmain(int argc, _TCHAR* argv[])
 {
 	welcome();
 	usage(argv[0]);
 	TestFramework::instance().runAll();
 	init();
-	
-
+	if (argc>=2)
+	{
+		if (loadRom(argv[1]))
+		{
+			// startExecution();
+		}
+	}else
+	{
+		puts("[!] No rom file specified.");
+	}
+	deinit();
 	TestFramework::destroy();
 	return 0;
 }

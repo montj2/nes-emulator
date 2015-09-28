@@ -58,12 +58,12 @@ public:
 
 	virtual TestResult run()
 	{
-		puts("checking RAM struture");
+		puts("checking RAM struture...");
 		assert(sizeof(ram)==0x10000);
 		assert(&ram.bank6[0]-&ram.data(0)==0x6000);
 		assert(ram.page(0x20)-&ram.data(0)==0x2000);
 
-		printf("System memory at 0x%p\n", &ram);
+		printf("[ ] System memory at 0x%p\n", &ram);
 		return SUCCESS;
 	}
 };
