@@ -8,6 +8,9 @@
 #include "types/types.h"
 #include "unittest/framework.h"
 
+#include "nes/internals.h"
+#include "nes/opcodes.h"
+
 static void welcome()
 {
 	puts("Portable NES Emulator 1.0"); 
@@ -23,6 +26,7 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 	welcome();
 	usage(argv[0]);
 	TestFramework::instance().runAll();
+	initOpcodeTable();
 
 	TestFramework::destroy();
 	return 0;
