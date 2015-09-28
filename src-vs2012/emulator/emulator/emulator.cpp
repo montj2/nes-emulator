@@ -10,6 +10,7 @@
 
 #include "nes/internals.h"
 #include "nes/opcodes.h"
+#include "nes/mmc.h"
 
 static void welcome()
 {
@@ -21,12 +22,19 @@ static void usage(_TCHAR* self_path)
 	// _tprintf(_T("%s <nes file path>\n"), self_path);
 }
 
+static void init()
+{
+	initOpcodeTable();
+	resetMMC();
+}
+
 int _cdecl _tmain(int argc, _TCHAR* argv[])
 {
 	welcome();
 	usage(argv[0]);
 	TestFramework::instance().runAll();
-	initOpcodeTable();
+	init();
+	
 
 	TestFramework::destroy();
 	return 0;

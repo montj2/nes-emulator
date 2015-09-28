@@ -50,7 +50,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CallingConvention>FastCall</CallingConvention>
       <ExceptionHandling>false</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -80,6 +80,7 @@
   <ItemGroup>
     <ClInclude Include="macros.h" />
     <ClInclude Include="nes\internals.h" />
+    <ClInclude Include="nes\mmc.h" />
     <ClInclude Include="nes\opcodes.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -91,6 +92,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="emulator.cpp" />
+    <ClCompile Include="nes\mmc.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../stdafx.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="nes\opcodes.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
