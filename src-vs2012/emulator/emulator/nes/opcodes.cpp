@@ -13,29 +13,32 @@ static bool usualOp[256]={false};
 static const char* adrmodeDesc[(int)_ADR_MAX];
 static const char* instructionName[(int)_INS_MAX];
 
-M6502_OPCODE parseOpcode(const opcode_t opcode)
+namespace opcode
 {
-	return opdata[opcode];
-}
+	M6502_OPCODE parse(const opcode_t opcode)
+	{
+		return opdata[opcode];
+	}
 
-const char* instName(const M6502_INST inst)
-{
-	return instructionName[(int)inst];
-}
+	const char* instName(const M6502_INST inst)
+	{
+		return instructionName[(int)inst];
+	}
 
-const char* instName(const opcode_t opcode)
-{
-	return instName(opdata[opcode].inst);
-}
+	const char* instName(const opcode_t opcode)
+	{
+		return instName(opdata[opcode].inst);
+	}
 
-const char* explainAddrMode(const M6502_ADDRMODE adrmode)
-{
-	return adrmodeDesc[(int)adrmode];
-}
+	const char* explainAddrMode(const M6502_ADDRMODE adrmode)
+	{
+		return adrmodeDesc[(int)adrmode];
+	}
 
-bool isUsualOp(const opcode_t opcode)
-{
-    return usualOp[opcode];
+	bool usual(const opcode_t opcode)
+	{
+		return usualOp[opcode];
+	}
 }
 
 static void initStrings()
@@ -905,14 +908,14 @@ static bool regOp(const M6502_INST inst, const opcode_t opcode, const M6502_ADDR
     if (adrmode != opdata[opcode].addrmode)
     {
         printf("[X] Error: Data Mismatch\n");
-        printf("\t opcode: 0x%02x(%s)\n", opcode, instName(opcode));
+        printf("\t opcode: 0x%02x(%s)\n", opcode, opcode::instName(opcode));
         if (inst != opdata[opcode].inst)
         {
-            printf("\tinst=%s[%u] (ref=%s[%u])\n", instName(inst),inst, instName(opdata[opcode].inst), (M6502_INST)opdata[opcode].inst);
+            printf("\tinst=%s[%u] (ref=%s[%u])\n", opcode::instName(inst), inst, opcode::instName(opdata[opcode].inst), (M6502_INST)opdata[opcode].inst);
         }
         if (adrmode != opdata[opcode].addrmode)
         {
-            printf("\taddrmode=%u (ref=%u)\n",adrmode, (M6502_ADDRMODE)opdata[opcode].addrmode);
+            printf("\taddrmode=%u (ref=%u)\n", adrmode, (M6502_ADDRMODE)opdata[opcode].addrmode);
         }
 		return false;
     }
@@ -1189,17 +1192,20 @@ static void registerCommonOpcodes()
     regOp(INS_TYA,0x98,ADR_IMP,1,2);
 }
 
-void initOpcodeTable()
+namespace opcode
 {
-	// const strings
-	initStrings();
+	void initTable()
+	{
+		// const strings
+		initStrings();
 
-	// mark all entries as invalid
-	memset(opdata,-1,sizeof(opdata));
+		// mark all entries as invalid
+		memset(opdata,-1,sizeof(opdata));
 
-	// fill table entries
-	fillAllEntries();
-	registerCommonOpcodes();
+		// fill table entries
+		fillAllEntries();
+		registerCommonOpcodes();
+	}
 }
 
 // unit tests

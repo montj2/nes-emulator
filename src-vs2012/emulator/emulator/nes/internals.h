@@ -69,5 +69,15 @@ enum ROMCONTROL2 {
     RCTL2_MAPPERHIGH=0xF0
 };
 
-bool loadRom( const _TCHAR *romFile );
-void unloadRom();
+// global functions
+namespace rom
+{
+	bool load( const _TCHAR *romFile );
+	void unload();
+
+	int mapperType();
+	int mirrorMode();
+
+	const char* getImage();
+	const char* getVROM();
+}

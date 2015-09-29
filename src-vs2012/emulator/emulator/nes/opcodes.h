@@ -104,11 +104,15 @@ struct M6502_OPCODE
     M6502_ADDRMODE addrmode;
     uint8_t size;
 };
-// global functions
-void initOpcodeTable();
 
-M6502_OPCODE parseOpcode(const opcode_t opcode);
-const char* instName(const M6502_INST inst);
-const char* instName(const opcode_t opcode);
-const char* explainAddrMode(const M6502_ADDRMODE adrmode);
-bool isUsualOp(const opcode_t opcode);
+// global functions
+namespace opcode
+{
+	void initTable();
+
+	M6502_OPCODE parse(const opcode_t opcode);
+	const char* instName(const M6502_INST inst);
+	const char* instName(const opcode_t opcode);
+	const char* explainAddrMode(const M6502_ADDRMODE adrmode);
+	bool usual(const opcode_t opcode);
+}

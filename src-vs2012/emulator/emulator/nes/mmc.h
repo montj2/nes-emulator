@@ -48,8 +48,11 @@ extern struct NESRAM ram;
 #define ramSt ram.stack
 #define ram0p ram.zeropage
 
-// global functions
-void resetMMC();
+namespace mmc
+{
+	// global functions
+	void reset();
 
-void bankSwitch(int reg8, int regA, int regC, int regE, const uint8_t* image);
-bool setupMMC(int mapper_type, const uint8_t* image, const size_t image_size);
+	void bankSwitch(int reg8, int regA, int regC, int regE, const uint8_t* image);
+	bool setup(int mapper_type, const uint8_t* image, const size_t image_size);
+}

@@ -14,37 +14,40 @@ struct NESRAM ram;
 // addresses of currently selected prg-rom banks.
 static int p8,pA,pC,pE;
 
-// perform bank switching
-void bankSwitch(int reg8, int regA, int regC, int regE, const uint8_t* image)
+namespace mmc
 {
-	if (p8!=reg8) memcpy(ram.bank8, &image[reg8*0x2000], 0x2000);
-	if (pA!=regA) memcpy(ram.bankA, &image[regA*0x2000], 0x2000);
-	if (pC!=regC) memcpy(ram.bankC, &image[regC*0x2000], 0x2000);
-	if (pE!=regE) memcpy(ram.bankE, &image[regE*0x2000], 0x2000);
-	// update current selection
-	p8=reg8;pA=regA;pC=regC;pE=regE;
-}
-
-bool setupMMC(int mapper_type, const uint8_t* image, const size_t image_size)
-{
-	switch (mapper_type)
+	// perform bank switching
+	void bankSwitch(int reg8, int regA, int regC, int regE, const uint8_t* image)
 	{
-	case 0: // no mapping
-		bankSwitch(0, 1, 2, 3, image);
-		return true;
-
-	default: // unknown mapper
-		return false;
+		if (p8!=reg8) memcpy(ram.bank8, &image[reg8*0x2000], 0x2000);
+		if (pA!=regA) memcpy(ram.bankA, &image[regA*0x2000], 0x2000);
+		if (pC!=regC) memcpy(ram.bankC, &image[regC*0x2000], 0x2000);
+		if (pE!=regE) memcpy(ram.bankE, &image[regE*0x2000], 0x2000);
+		// update current selection
+		p8=reg8;pA=regA;pC=regC;pE=regE;
 	}
-}
 
-void resetMMC()
-{
-	// no prg-rom selected now
-	p8=pA=pC=pE=-1;
+	bool setup(int mapper_type, const uint8_t* image, const size_t image_size)
+	{
+		switch (mapper_type)
+		{
+		case 0: // no mapping
+			bankSwitch(0, 1, 2, 3, image);
+			return true;
 
-	// flush memory
-	memset(&ram,0,sizeof(ram));
+		default: // unknown mapper
+			return false;
+		}
+	}
+
+	void reset()
+	{
+		// no prg-rom selected now
+		p8=pA=pC=pE=-1;
+
+		// flush memory
+		memset(&ram,0,sizeof(ram));
+	}
 }
 
 // unit tests

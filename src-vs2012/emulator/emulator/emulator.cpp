@@ -24,13 +24,13 @@ static void usage(_TCHAR* self_path)
 
 static void init()
 {
-	initOpcodeTable();
-	resetMMC();
+	opcode::initTable();
+	mmc::reset();
 }
 
 static void deinit()
 {
-	unloadRom();
+	rom::unload();
 }
 
 int _cdecl _tmain(int argc, _TCHAR* argv[])
@@ -41,7 +41,7 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 	init();
 	if (argc>=2)
 	{
-		if (loadRom(argv[1]))
+		if (rom::load(argv[1]))
 		{
 			// startExecution();
 		}
