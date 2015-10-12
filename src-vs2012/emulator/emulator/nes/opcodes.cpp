@@ -1219,10 +1219,10 @@ public:
 
 	virtual TestResult run()
 	{
-		assert(sizeof(opdata[0])==4);
-		assert(sizeof(opdata)/sizeof(opdata[0])==256);
-		assert((int)_ADR_MAX==14);
-		assert((int)_INS_MAX==67);
+		tassert(sizeof(opdata[0])==4);
+		tassert(sizeof(opdata)/sizeof(opdata[0])==256);
+		tassert((int)_ADR_MAX==14);
+		tassert((int)_INS_MAX==67);
 		return SUCCESS;
 	}
 };

@@ -40,9 +40,11 @@ public:
 		_value = value;
     }
 	
-	// transparent value getter (auto unboxing)
-	operator T() const {return _value;}
-
+	#ifndef DISABLE_BITFIELD_AUTO_UNBOXING
+		// transparent value getter (auto unboxing)
+		operator T() const {return _value;}
+	#endif
+	
 	// checked setter
 	bit_field& operator = (const T value)
 	{
@@ -92,10 +94,10 @@ public:
 
 	bool bitAt(const int n) const
 	{
-		assert(n>=0 && n<bits);
+		vassert(n>=0 && n<bits);
 		return 0!=(_value&(((T)1)<<n));
 	}
-
+	
 	bool operator [](const int n) const
 	{
 		return bitAt(n);
@@ -116,7 +118,7 @@ public:
 		return 0!=((~_value)&MASK);
 	}
 
-	bool isMax() const
+	bool reachMax() const
 	{
 		return _value==MASK;
 	}
@@ -142,7 +144,7 @@ public:
 		return _unchecked_wrapper((_value-delta)&MASK);
 	}
 
-	// the following operations would change the value
+	// edit
 	bit_field& operator += (const T delta)
 	{
 		_value=(_value+delta)&MASK;
@@ -221,11 +223,21 @@ public:
 		_value=(_value<<n)&MASK;
 	}
 
+	void selfShl1()
+	{
+		_value=(_value<<1)&MASK;
+	}
+
 	// ShiftRight
 	void selfShr(const int n)
 	{
 		assert(n>=0 && n<=bits);
 		_value>>=n;
+	}
+
+	void selfShr1()
+	{
+		_value>>=1;
 	}
 
 	// RotateLeftWithCarry

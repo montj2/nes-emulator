@@ -99,3 +99,10 @@ void TestFramework::deleteAll()
 	}
 	_pImpl->fTestCases.clear();
 }
+
+
+void TestFramework::assertion(const wchar_t * expression, const wchar_t * file, unsigned long lineNumber, TestCase * obj)
+{
+	wprintf(L"[X] Assertion failed: %s\n[X] Location: %s: %ld", expression, file, lineNumber);
+	__debugbreak();
+}

@@ -43,6 +43,7 @@ public:
 class TestFramework
 {
 public:
+	// test case manager
 	template <class TC> TestResult runTestCase();
 	TestResult runTestCase(TestCase *);
 	void runAll();
@@ -50,6 +51,10 @@ public:
 	void addTestCase(TestCase *);
 	void deleteAll();
 
+	// unit test utility
+	void assertion(const wchar_t *, const wchar_t *, unsigned long, TestCase * tc = nullptr);
+
+	// singleton
 	static inline TestFramework& instance()
 	{
 		// lazy-load
@@ -79,3 +84,5 @@ private:
 };
 
 #define registerTestCase(C) static TestCaseAutoRegister<C> __ ## C ## _register
+
+#define tassert(E) if (!(E)) (framework().assertion(_CRT_WIDE(#E), _CRT_WIDE(__FILE__), __LINE__, this))

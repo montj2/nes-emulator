@@ -62,7 +62,7 @@ inline destType& safe_cast(srcType& source)
     #define fast_constcast(VAR,TP) (safe_cast<const TP>(VAR))
 #else
     #define fast_cast(VAR,TP) ((TP&)*(TP*)(&(VAR)))
-    #define fast_constcast(VAR,TP) ((const TP&)*(TP*)(&(VAR)))
+    #define fast_constcast(VAR,TP) ((const TP&)*(const TP*)(&(VAR)))
 #endif
 
 template <typename T>

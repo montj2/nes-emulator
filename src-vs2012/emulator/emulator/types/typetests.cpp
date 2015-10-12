@@ -43,84 +43,84 @@ public:
 		// videoAddr=0xFFFF;
 
 		videoAddr=0x3FFF;
-		assert(!videoAddr.belowMax());
+		tassert(!videoAddr.belowMax());
 		for (int i=0;i<14;i++)
 		{
-			assert(videoAddr[i] == (1&(0x3FFF>>i)));
+			tassert(videoAddr[i] == (1&(0x3FFF>>i)));
 		}
-		assert(videoAddr==typeMax);
+		tassert(videoAddr==typeMax);
 
 		// plus() won't change the value
-		assert(videoAddr.plus(1)==0);
+		tassert(videoAddr.plus(1)==0);
 
 		inc(videoAddr);
-		assert(videoAddr==0 && videoAddr.zero());
+		tassert(videoAddr==0 && videoAddr.zero());
 		printf("%X\n",videoAddr);
 
 		dec(videoAddr);
-		assert(videoAddr==0x3FFF && !videoAddr.zero());
-		assert(videoAddr.isMax());
+		tassert(videoAddr==0x3FFF && !videoAddr.zero());
+		tassert(videoAddr.reachMax());
 		printf("%X\n",valueOf(videoAddr));
-		assert(MSB(videoAddr) && LSB(videoAddr) && videoAddr.negative());
+		tassert(MSB(videoAddr) && LSB(videoAddr) && videoAddr.negative());
 		videoAddr.selfShr(2);
-		assert(videoAddr==0xFFF);
-		assert(!MSB(videoAddr) && !videoAddr.negative());
+		tassert(videoAddr==0xFFF);
+		tassert(!MSB(videoAddr) && !videoAddr.negative());
 
 		videoAddr.selfShl(1);
-		assert(!LSB(videoAddr));
-		assert(videoAddr==0x1FFE);
+		tassert(!LSB(videoAddr));
+		tassert(videoAddr==0x1FFE);
 		videoAddr.selfShl(14);
-		assert(videoAddr.zero());
+		tassert(videoAddr.zero());
 
 		videoAddr^=addr14_t(0x3FFF);
 		videoAddr&=addr14_t(0x2001);
-		assert(videoAddr.negative() && MSB(videoAddr) && LSB(videoAddr));
+		tassert(videoAddr.negative() && MSB(videoAddr) && LSB(videoAddr));
 
 		videoAddr=0x1010;
 		videoAddr.selfRol();
-		assert(MSB(videoAddr) && !LSB(videoAddr));
+		tassert(MSB(videoAddr) && !LSB(videoAddr));
 
 		videoAddr.selfRol();
-		assert(!MSB(videoAddr) && LSB(videoAddr));
-		assert(videoAddr==0x0041);
+		tassert(!MSB(videoAddr) && LSB(videoAddr));
+		tassert(videoAddr==0x0041);
 
 		videoAddr.selfRor();
-		assert(videoAddr==0x2020);
+		tassert(videoAddr==0x2020);
 		videoAddr.selfRor();
-		assert(videoAddr==0x1010);
+		tassert(videoAddr==0x1010);
 
 		videoAddr.selfNOT();
-		assert(videoAddr==0x2FEF);
+		tassert(videoAddr==0x2FEF);
 
 		videoAddr.selfDropLowbit();
-		assert(videoAddr==0x2FEE);
+		tassert(videoAddr==0x2FEE);
 		videoAddr.selfShl(8);
-		assert(videoAddr==0x2E00);
-		assert(videoAddr.lowbit()==0x200);
+		tassert(videoAddr==0x2E00);
+		tassert(videoAddr.lowbit()==0x200);
 		videoAddr.selfDropLowbit();
-		assert(videoAddr==0x2C00);
+		tassert(videoAddr==0x2C00);
 
 		videoAddr.selfRTrim();
-		assert(videoAddr==0xB);
+		tassert(videoAddr==0xB);
 		videoAddr^=addr14_t(0x3);
 		videoAddr.selfRTrim();
-		assert(videoAddr==0x1);
+		tassert(videoAddr==0x1);
 
 		videoAddr-=(0xFFFFFFFF);
-		assert(videoAddr==2);
+		tassert(videoAddr==2);
 
 		videoAddr.selfShl(12);
-		assert(MSB(videoAddr));
+		tassert(MSB(videoAddr));
 		videoAddr.selfRcl(true);
-		assert(videoAddr==1);
+		tassert(videoAddr==1);
 
 		videoAddr.selfRcr(true);
-		assert(MSB(videoAddr));
+		tassert(MSB(videoAddr));
 
 		_alutemp_t sum=0x1FF;
-		assert(safe_cast<alu_t>(sum).overflow());
+		tassert(safe_cast<alu_t>(sum).overflow());
 		safe_cast<alu_t>(sum).selfShr(1);
-		assert(safe_cast<alu_t>(sum).overflow()==false);
+		tassert(safe_cast<alu_t>(sum).overflow()==false);
 
 		return SUCCESS;
 	}
@@ -140,15 +140,15 @@ public:
 		static_assert(sizeof(_reg8_t)==sizeof(P),"FLAG size error");
 		printf("P=%X\n",valueOf(P));
 		P.clearAll();
-		assert(!P.any());
+		tassert(!P.any());
 
 		P.set(F_ZERO);
 		P-=F_BCD;
-		assert(valueOf(P)==F_ZERO);
+		tassert(valueOf(P)==F_ZERO);
 		P^=F_MULTIPLE;
-		assert(valueOf(P)==(F_ZERO|F_MULTIPLE));
+		tassert(valueOf(P)==(F_ZERO|F_MULTIPLE));
 		P^=F_ZERO;
-		assert(valueOf(P)==F_MULTIPLE);
+		tassert(valueOf(P)==F_MULTIPLE);
 		P.update(F_BCD,1);
 		//P.update(F_BCD,2);
 		P.update(F_BCD,0);
@@ -156,37 +156,37 @@ public:
 		P.clearAll();
 		P|=F_NEGATIVE;
 		P.set(F_BREAK);
-		assert(P.select(F_MULTIPLE)==0x10);
+		tassert(P.select(F_MULTIPLE)==0x10);
 		
 		P=bit_field<_reg8_t,8>(0xFF);
-		assert(P.select(F_MULTIPLE)==0x11);
-		assert(P.select(F_MULTIPLE2)==0x11);
+		tassert(P.select(F_MULTIPLE)==0x11);
+		tassert(P.select(F_MULTIPLE2)==0x11);
 		P.update(F_MULTIPLE2,0);
-		assert(valueOf(P)==0xFF-F_MULTIPLE2);
+		tassert(valueOf(P)==0xFF-F_MULTIPLE2);
 
 		P.clearAll();
 		P.update(F_MULTIPLE,0x11);
-		assert(valueOf(P)==F_MULTIPLE);
+		tassert(valueOf(P)==F_MULTIPLE);
 
 		P.setAll();
 		P.copy(F_MULTIPLE3,0xD,1);
-		assert(valueOf(P)==0x8F);
+		tassert(valueOf(P)==0x8F);
 
 		P.setAll();
-		assert(P.select(F_MULTIPLE2)==0x11);
-		assert(P[F_MAX] && P.test(F_MULTIPLE));
+		tassert(P.select(F_MULTIPLE2)==0x11);
+		tassert(P[F_MAX] && P.test(F_MULTIPLE));
 		P.update(F_MULTIPLE2,0x10);
-		assert(valueOf(P)==0xFF-4);
-		assert(P(F_MULTIPLE2)==0x10);
-		assert(!P.test(F_MULTIPLE2));
+		tassert(valueOf(P)==0xFF-4);
+		tassert(P(F_MULTIPLE2)==0x10);
+		tassert(!P.test(F_MULTIPLE2));
 
 		P.clearAll();
 		P.set(F_MULTIPLE3);
 		P.inc(F_MULTIPLE3);
-		assert(!P.any());
+		tassert(!P.any());
 		P.inc(F_MULTIPLE3);
-		assert(P(F_MULTIPLE3)==1);
-		assert(P.inc(F_MULTIPLE3)==2);
+		tassert(P(F_MULTIPLE3)==1);
+		tassert(P.inc(F_MULTIPLE3)==2);
 
 		return SUCCESS;
 	}
@@ -207,13 +207,13 @@ public:
 
 		bf=0x81;
 		fs=bf;
-		assert(valueOf(fs)==valueOf(bf));
+		tassert(valueOf(fs)==valueOf(bf));
 
-		assert(valueOf(bf.asFlagSet<PSW>())==fs.asBitField());
+		tassert(valueOf(bf.asFlagSet<PSW>())==fs.asBitField());
 
 		addr8_t bf2(fs);
 
-		assert(bf2 == bf);
+		tassert(bf2 == bf);
 
 		return SUCCESS;
 	}
