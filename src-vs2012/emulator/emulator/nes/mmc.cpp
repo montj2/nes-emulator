@@ -9,6 +9,7 @@
 #include "mmc.h"
 
 // NES main memory
+__declspec(align(0x1000))
 struct NESRAM ram;
 
 // addresses of currently selected prg-rom banks.

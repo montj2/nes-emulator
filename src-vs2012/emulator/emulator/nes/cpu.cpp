@@ -24,21 +24,23 @@ enum PSW
 	F__NV=F_NEGATIVE|F_OVERFLOW
 };
 
-// ++ 6502 register set ++
-static _reg8_t		A; // accumulator
-static _reg8_t		X, Y; // index
-static addr8_t		SP; // stack pointer
-static flag_set<_reg8_t, PSW, 8> P; // status
-static maddr_t		PC; // program counter
+#pragma region 6502RegisterFile
 
-// wrappers
-#define regA fast_cast(A, reg_bit_field_t)
-#define regX fast_cast(X, reg_bit_field_t)
-#define regY fast_cast(Y, reg_bit_field_t)
-#define M fast_cast(value, operand_t)
-#define SUM fast_cast(temp, alu_t)
+	__declspec(align(32))
+	static _reg8_t		A; // accumulator
+	static _reg8_t		X, Y; // index
+	static addr8_t		SP; // stack pointer
+	static flag_set<_reg8_t, PSW, 8> P; // status
+	static maddr_t		PC; // program counter
 
-// -- 6502 register set --
+	// wrappers
+	#define regA fast_cast(A, reg_bit_field_t)
+	#define regX fast_cast(X, reg_bit_field_t)
+	#define regY fast_cast(Y, reg_bit_field_t)
+	#define M fast_cast(value, operand_t)
+	#define SUM fast_cast(temp, alu_t)
+
+#pragma endregion
 
 namespace stack
 {
@@ -271,6 +273,8 @@ public:
 		tmp=stack::popByte();
 		tassert(tmp==0xFF);
 		
+		printf("[ ] Register memory at 0x%p\n", &A);
+
 		return SUCCESS;
 	}
 };
