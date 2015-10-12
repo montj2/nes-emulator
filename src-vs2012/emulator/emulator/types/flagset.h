@@ -52,7 +52,7 @@ public:
 
 	void set(const ET e)
 	{
-		_value|=e;
+		_value|=(T)e;
 	}
 
 	void operator |=(const ET e)
@@ -70,8 +70,15 @@ public:
 		clear(e);
 	}
 
-	void change(const ET e, const bool enabled) {
-		enabled? set(e): clear(e);
+	void change(const ET e, const bool enabled)
+	{
+		_value=(_value&(~(T)e))|((-(int)enabled)&(T)e);
+	}
+
+	template <ET e>
+	void change(const int enabled)
+	{
+		_value=(_value&(~(T)e))|((-enabled)&(T)e);
 	}
 
 	void setAll()
@@ -84,31 +91,49 @@ public:
 		_value=0;
 	}
 
-	// advanced bit-field operation
+	// advanced bit manipulation
 	T select(const ET e) const
 	{
-		const T d=(T)e;
-		return (_value&d)/LOW_BIT(d);
+		return SELECT_FIELD(_value, (T)e);
+	}
+
+	template <ET e>
+	T select() const
+	{
+		return SELECT_FIELD(_value, (T)e);
 	}
 
 	T operator ()(const ET e) const
 	{
-		return select(e);
+		return SELECT_FIELD(_value, (T)e);
 	}
 
 	void update(const ET e, const T newValue)
 	{
-		const T field=(T)e;
+		assert(0==(newValue&(~RTRIM((T)e))));
+		UPDATE_FIELD(_value, (T)e, newValue);
+	}
+
+	template <ET e>
+	void update(const T newValue)
+	{
 		assert(0==(newValue&(~RTRIM(field))));
-		_value=(_value&(~field))|((newValue*LOW_BIT(field))&field);
+		UPDATE_FIELD(_value, (T)e, newValue);
 	}
 
 	T inc(const ET e)
 	{
-		const T field=(T)e;
-		vassert(!SINGLE_BIT(field));
-		_value=(_value&(~field))|(((_value&field)+LOW_BIT(field))&field);
-		return select(e);
+		vassert(!SINGLE_BIT((T)e));
+		INC_FIELD(_value, (T)e);
+		return SELECT_FIELD(_value, (T)e);;
+	}
+
+	template <ET e>
+	T inc()
+	{
+		STATIC_ASSERT(!SINGLE_BIT((T)e));
+		INC_FIELD(_value, (T)e);
+		return SELECT_FIELD(_value, (T)e);;
 	}
 
 	// set the specified field to the lower `length` bits of (src>>shift)
@@ -116,6 +141,15 @@ public:
 	{
 		vassert(0==(BIT_MASK(T, length)&(~RTRIM((T)e))));
 		update(e, (src>>shift)&BIT_MASK(T, length));
+	}
+
+	template <ET e, int shift, int length>
+	void copy(const T src)
+	{
+		const T field=(T)e;
+		STATIC_ASSERT(0==(BIT_MASK(T, length)&(~RTRIM(field))));
+		const T newValue = (src>>shift)&BIT_MASK(T, length);
+		UPDATE_FIELD(_value, field, newValue);
 	}
 
 	// token functions

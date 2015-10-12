@@ -44,10 +44,15 @@ public:
 // e.g. TYPE_MAX(int)=0xFFFFFFFF
 #define TYPE_MAX(TP) BIT_MASK(TP,SIZE_IN_BITS(TP))
 
+// bit manipulation
 #define LOW_BIT(x) ((x)&(-(x)))
 #define RTRIM(x) ((x)/LOW_BIT(x))
 
 #define SINGLE_BIT(x) (((x)&((x)-1))==0)
+
+#define SELECT_FIELD(x, f) (((x)&(f))/LOW_BIT(f))
+#define UPDATE_FIELD(x, f, y) x=((x)&(~f))|(((y)*LOW_BIT(f))&(f))
+#define INC_FIELD(x, f) x=((x)&(~(f))) | ( (((x)&(f)) + LOW_BIT(f)) & (f) );
 
 template <typename destType, typename srcType>
 inline destType& safe_cast(srcType& source)

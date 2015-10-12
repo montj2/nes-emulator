@@ -17,14 +17,14 @@ enum PSW
     F_BCD=0x8,
 	F__DECIMAL=F_BCD,
     F_BREAK=0x10,
-    F_NOTUSED=0x20,
+    F_NOTUSED=0x20, // undefined (always set)
     F_OVERFLOW=0x40,
     F_NEGATIVE=0x80,
 	F__SIGN=F_NEGATIVE,
 	F__NV=F_NEGATIVE|F_OVERFLOW
 };
 
-#pragma region 6502RegisterFile
+#pragma region RegisterFile
 
 	__declspec(align(32))
 	static _reg8_t		A; // accumulator
@@ -145,33 +145,27 @@ namespace status
 	template <class T,int bits>
 	static inline void setZ(const bit_field<T,bits>& result)
 	{
-		P.change(F_ZERO, result.zero());
+		P.change<F_ZERO>(result.zero());
 	}
 
 	template <class T,int bits>
 	static inline void setN(const bit_field<T,bits>& result)
 	{
-		P.change(F_NEGATIVE, result.negative());
+		P.change<F_NEGATIVE>(result.negative());
 	}
 
 	template <class T,int bits>
 	static inline void setNZ(const bit_field<T,bits>& result)
 	{
-		P.change(F_NEGATIVE, result.negative());
-		P.change(F_ZERO, result.zero());
-	}
-
-	template <class T,int bits>
-	static inline void setV(const bit_field<T,bits>& result)
-	{
-		P.change(F_OVERFLOW, result.overflow());
+		P.change<F_NEGATIVE>(result.negative());
+		P.change<F_ZERO>(result.zero());
 	}
 
 	template <class T,int bits>
 	static inline void setNV(const bit_field<T,bits>& result)
 	{
 		STATIC_ASSERT((int)F_NEGATIVE == 1<<7 && (int)F_OVERFLOW == 1<<6);
-		P.copy(F__NV, result, 6, 2);
+		P.copy<F__NV, 6, 2>(result);
 	}
 }
 
