@@ -48,6 +48,9 @@
     <ClInclude Include="nes\mmc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="nes\cpu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -69,6 +72,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="nes\romloader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="nes\cpu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
