@@ -11,6 +11,7 @@
 #include "nes/internals.h"
 #include "nes/opcodes.h"
 #include "nes/mmc.h"
+#include "nes/cpu.h"
 
 static void welcome()
 {
@@ -25,7 +26,6 @@ static void usage(_TCHAR* self_path)
 static void init()
 {
 	opcode::initTable();
-	mmc::reset();
 }
 
 static void deinit()
@@ -43,7 +43,20 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 	{
 		if (rom::load(argv[1]))
 		{
-			// startExecution();
+			// setup mmc
+			mmc::reset();
+			if (mmc::setup(rom::mapperType(), (const uint8_t*)rom::getImage(), rom::sizeOfImage()))
+			{
+				// setup cpu
+				cpu::reset();
+				// startExecution();
+			}else
+			{
+				puts("[X] Mapper not supported.");
+			}
+		}else
+		{
+			puts("[X] Unable to load the rom.");
 		}
 	}else
 	{

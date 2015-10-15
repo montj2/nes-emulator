@@ -13,19 +13,22 @@ static uint8_t prgCount, chrCount;
 static flag_set<uint8_t,ROMCONTROL1> romCtrl;
 static flag_set<uint8_t,ROMCONTROL2> romCtrl2;
 static char *trainerData;
+static size_t trainerSize;
 static char *imageData;
+static size_t imageSize;
 static char *vromData;
+static size_t vromSize;
 
 namespace rom
 {
 	bool load( const _TCHAR *romFile )
 	{
-		FILE *fp;
+		FILE *fp=NULL;
 		uint8_t nesMagic[4]={0};
 		uint8_t reserved[8]={0};
 
 		// open rom file
-		fp=_tfopen(romFile, _T("rb"));
+		_tfopen_s(&fp, romFile, _T("rb"));
 		if (fp==NULL)
 		{
 			_tprintf(_T("Couldn't open %s (error code %d)\n"), romFile, errno);
@@ -68,14 +71,16 @@ namespace rom
 		// read trainer data (if present)
 		if (romCtrl[RCTL1_TRAINER])
 		{
-			trainerData = new char[512];
+			trainerSize = 512;
+			trainerData = new char[trainerSize];
 			assert(trainerData != NULL);
 			if (1 != fread(trainerData, 512, 1, fp)) goto incomplete;
 		}
 
 		puts("[ ] reading ROM image...");
 		// read rom image
-		imageData = new char[prgCount*0x4000];
+		imageSize = prgCount*0x4000;
+		imageData = new char[imageSize];
 		assert(imageData != NULL);
 		if (prgCount != fread(imageData, 0x4000, prgCount, fp))
 		{
@@ -88,7 +93,8 @@ namespace rom
 
 		puts("[ ] reading VROM data...");
 		// read VROM
-		vromData = new char[chrCount*0x2000];
+		vromSize = chrCount*0x2000;
+		vromData = new char[vromSize];
 		assert(vromData != NULL);
 		if (chrCount != fread(vromData, 0x2000, chrCount, fp)) goto incomplete;
 
@@ -123,5 +129,15 @@ namespace rom
 	const char* getVROM()
 	{
 		return vromData;
+	}
+
+	size_t sizeOfImage()
+	{
+		return imageSize;
+	}
+
+	size_t sizeOfVROM()
+	{
+		return vromSize;
 	}
 }

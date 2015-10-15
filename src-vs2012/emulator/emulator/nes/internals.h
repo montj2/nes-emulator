@@ -80,4 +80,7 @@ namespace rom
 
 	const char* getImage();
 	const char* getVROM();
+
+	size_t sizeOfImage();
+	size_t sizeOfVROM();
 }

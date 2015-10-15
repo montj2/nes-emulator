@@ -6,8 +6,9 @@
 #include "../unittest/framework.h"
 
 #include "internals.h"
-#include "cpu.h"
 #include "mmc.h"
+#include "opcodes.h"
+#include "cpu.h"
 
 enum PSW
 {
@@ -15,32 +16,72 @@ enum PSW
     F_ZERO=0x2,
     F_INTERRUPT_OFF=0x4,
     F_BCD=0x8,
-	F__DECIMAL=F_BCD,
+	F_DECIMAL=F_BCD,
     F_BREAK=0x10,
     F_NOTUSED=0x20, // undefined (always set)
     F_OVERFLOW=0x40,
     F_NEGATIVE=0x80,
-	F__SIGN=F_NEGATIVE,
+	F_SIGN=F_NEGATIVE,
 	F__NV=F_NEGATIVE|F_OVERFLOW
 };
 
-#pragma region RegisterFile
+// Register file
+__declspec(align(32))
+static _reg8_t		A; // accumulator
+static _reg8_t		X, Y; // index
+static addr8_t		SP; // stack pointer
+static flag_set<_reg8_t, PSW, 8> P; // status
+static maddr_t		PC; // program counter
 
-	__declspec(align(32))
-	static _reg8_t		A; // accumulator
-	static _reg8_t		X, Y; // index
-	static addr8_t		SP; // stack pointer
-	static flag_set<_reg8_t, PSW, 8> P; // status
-	static maddr_t		PC; // program counter
+// bit field wrappers for register file
+#define regA fast_cast(A, reg_bit_field_t)
+#define regX fast_cast(X, reg_bit_field_t)
+#define regY fast_cast(Y, reg_bit_field_t)
+#define M fast_cast(value, operand_t)
+#define SUM fast_cast(temp, alu_t)
 
-	// wrappers
-	#define regA fast_cast(A, reg_bit_field_t)
-	#define regX fast_cast(X, reg_bit_field_t)
-	#define regY fast_cast(Y, reg_bit_field_t)
-	#define M fast_cast(value, operand_t)
-	#define SUM fast_cast(temp, alu_t)
+// Run-time statistics
+#ifndef NDEBUG
+	static long long totInstructions;
+	static long long totCycles;
+	static long long totInterrupts;
+	static long long numInstructionsPerOpcode[(int)_INS_MAX];
+	static long long numInstructionsPerAdrMode[(int)_ADR_MAX];
+	#define STAT_ADD(VAR, INC) VAR += INC
+#else
+	#define STAT_ADD(VAR, INC) (void)0
+#endif
 
-#pragma endregion
+namespace interrupt
+{
+	static const maddr_t VECTOR_NMI(0xFFFA);
+	static const maddr_t VECTOR_RESET(0xFFFC);
+	static const maddr_t VECTOR_BRK(0xFFFE);
+
+	static IRQ currentIRQ;
+	
+	void clear()
+	{
+		currentIRQ = IRQ::NONE;
+	}
+
+	void request(const IRQ irqType)
+	{
+		assert(irqType != IRQ::NONE);
+		currentIRQ = irqType;
+		STAT_ADD(totInterrupts, 1);
+	}
+
+	bool pending()
+	{
+		return currentIRQ != IRQ::NONE;
+	}
+
+	IRQ type()
+	{
+		return currentIRQ;
+	}
+}
 
 namespace stack
 {
@@ -100,6 +141,15 @@ namespace stack
 		SP+=2;
 		return *(uint16_t*)&(ramSt[SP.minus(1)]);
 	}
+
+	static void reset()
+	{
+		// move stack pointer to the top of the stack
+		SP.selfSetMax();
+
+		// flush stack
+		memset(ramSt, 0, sizeof(ramSt));
+	}
 }
 
 namespace bitshift
@@ -107,7 +157,7 @@ namespace bitshift
 	template <class T,int bits>
 	static inline void ASL(bit_field<T,bits>& operand) {
 		// Arithmetic Shift Left
-		P.change(F_CARRY, MSB(operand));
+		P.change<F_CARRY>(MSB(operand));
 		operand.selfShl1();
 		status::setNZ(operand);
 	}
@@ -115,10 +165,10 @@ namespace bitshift
 	template <class T,int bits>
 	static inline void LSR(bit_field<T,bits>& operand) {
 		// Logical Shift Right
-		P.change(F_CARRY, LSB(operand));
+		P.change<F_CARRY>(LSB(operand));
 		operand.selfShr1();
 		status::setZ(operand);
-		P.clear(F__SIGN);
+		P.clear(F_SIGN);
 	}
 
 	template <class T,int bits>
@@ -126,7 +176,7 @@ namespace bitshift
 		// Rotate Left With Carry
 		const bool newCarry=MSB(operand);
 		operand.selfRcl(P[F_CARRY]);
-		P.change(F_CARRY, newCarry);
+		P.change<F_CARRY>(newCarry);
 		status::setNZ(operand);
 	}
 
@@ -135,7 +185,7 @@ namespace bitshift
 		// Rotate Right With Carry
 		const bool newCarry=LSB(operand);
 		operand.selfRcr(P[F_CARRY]);
-		P.change(F_CARRY, newCarry);
+		P.change<F_CARRY>(newCarry);
 		status::setNZ(operand);
 	}
 }
@@ -166,6 +216,38 @@ namespace status
 	{
 		STATIC_ASSERT((int)F_NEGATIVE == 1<<7 && (int)F_OVERFLOW == 1<<6);
 		P.copy<F__NV, 6, 2>(result);
+	}
+}
+
+namespace cpu
+{
+	void reset()
+	{
+		// reset general purpose registers
+		A=0;
+		X=0;
+		Y=0;
+
+		// reset status register
+		P.clearAll();
+		P.set(F_NOTUSED);
+
+		// reset stack pointer
+		stack::reset();
+
+		// clear IRQ state
+		interrupt::clear();
+	}
+
+	void start()
+	{
+		// set PC to the entry point
+		interrupt::request(IRQ::RST);
+	}
+
+	int nextInstruction()
+	{
+		return 0;
 	}
 }
 
