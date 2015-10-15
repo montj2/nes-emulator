@@ -33,7 +33,13 @@ namespace mmc
 		switch (mapper_type)
 		{
 		case 0: // no mapping
-			bankSwitch(0, 1, 2, 3, image);
+			if (image_size == 0x8000) // 32K of code
+				bankSwitch(0, 1, 2, 3, image);
+			else if (image_size == 0x4000) // 16K of code
+				bankSwitch(0, 1, 0, 1, image);
+			else
+				return false;
+
 			return true;
 
 		default: // unknown mapper
