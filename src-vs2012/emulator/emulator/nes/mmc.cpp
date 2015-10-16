@@ -62,10 +62,8 @@ namespace mmc
 	opcode_t fetchOpcode(const maddr_t pc)
 	{
 #ifdef WANT_MEM_PROTECTION
-		if (!MSB(pc)) // address out of range [$8000, $FFFF]
-		{
-			FATAL_ERROR(INVALID_MEMORY_ACCESS, MEMORY_NON_EXECUTABLE);
-		}
+		// check if address in code section [$8000, $FFFF]
+		ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE);
 #endif
 		return ram.bank8[pc-0x8000];
 	}
