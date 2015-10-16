@@ -41,9 +41,8 @@ namespace mmc
 			else
 			{
 				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE);
-				break;
+				return false;
 			}
-
 			return true;
 		}
 		// unknown mapper

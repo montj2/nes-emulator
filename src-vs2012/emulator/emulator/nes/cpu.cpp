@@ -6,6 +6,7 @@
 #include "../unittest/framework.h"
 
 #include "internals.h"
+#include "debug.h"
 #include "mmc.h"
 #include "opcodes.h"
 #include "cpu.h"
@@ -95,7 +96,7 @@ namespace stack
 
 		dec(SP);
 #ifndef ALLOW_ADDRESS_WRAP
-		assert(SP.belowMax());
+		ERROR_IF(SP.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
 #endif
 	}
 
@@ -110,13 +111,13 @@ namespace stack
 #ifdef MONITOR_STACK
 		printf("[S] Push 0x%04X to $%02X\n",word,valueOf(SP));
 #endif
-		assert(SP.belowMax());
+		FATAL_ERROR_IF(SP.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
 
 		*(uint16_t*)&(ramSt[valueOf(SP)])=(word);
 
 		dec(SP);
 #ifndef ALLOW_ADDRESS_WRAP
-		assert(SP.belowMax());
+		ERROR_IF(SP.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
 #endif
 	}
 
@@ -128,7 +129,7 @@ namespace stack
 	static inline byte_t popByte()
 	{
 #ifndef ALLOW_ADDRESS_WRAP
-		assert(SP.belowMax());
+		ERROR_IF(SP.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
 #endif
 		return ramSt[inc(SP)];
 	}
@@ -136,8 +137,10 @@ namespace stack
 	static inline word_t popWord()
 	{
 #ifndef ALLOW_ADDRESS_WRAP
-		assert(SP.belowMax() && SP.plus(1).belowMax());
+		ERROR_IF(SP.plus(1).reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
 #endif
+		FATAL_ERROR_UNLESS(SP.belowMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
+
 		SP+=2;
 		return *(uint16_t*)&(ramSt[SP.minus(1)]);
 	}
