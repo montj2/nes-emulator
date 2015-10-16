@@ -48,39 +48,25 @@ typedef uint16_t rgb16_t, rgb15_t;
 typedef bit_field<unsigned,3> offset3_t;
 typedef bit_field<unsigned,10> offset10_t;
 
-// rom config
-enum MIRRORING {
-    MIRROR_HORIZONTAL=0,
-    MIRROR_VERTICAL=1,
-    MIRROR_FOURSCREEN,
-    MIRROR_SINGLESCREEN,
+// errors
+enum EMUERROR {
+	INVALID_ROM=1,
+	INVALID_MEMORY_ACCESS,
+	INVALID_INSTRUCTION
 };
 
-enum ROMCONTROL1 {
-    RCTL1_VERTICALM=0x1,
-    RCTL1_BATTERYPACK=0x2,
-    RCTL1_TRAINER=0x4,
-    RCTL1_FOURSCREEN=0x8,
-    RCTL1_MAPPERLOW=0xF0
+enum EMUERRORSUBTYPE {
+	// INVALID_ROM
+	INVALID_FILE_SIGNATURE,
+	INVALID_ROM_CONFIG,
+	UNEXPECTED_END_OF_FILE,
+	UNSUPPORTED_MAPPER_TYPE,
+
+	// INVALID_MEMORY_ACCESS
+	MAPPER_FAILURE,
+	ADDRESS_OUT_OF_RANGE,
+	ILLEGAL_ADDRESS_WARP,
+	MEMORY_NON_EXECUTABLE,
+	MEMORY_READ_ONLY,
+	MEMORY_WRITE_ONLY
 };
-
-enum ROMCONTROL2 {
-    RCTL2_RESERVED=0xF,
-    RCTL2_MAPPERHIGH=0xF0
-};
-
-// global functions
-namespace rom
-{
-	bool load( const _TCHAR *romFile );
-	void unload();
-
-	int mapperType();
-	int mirrorMode();
-
-	const char* getImage();
-	const char* getVROM();
-
-	size_t sizeOfImage();
-	size_t sizeOfVROM();
-}

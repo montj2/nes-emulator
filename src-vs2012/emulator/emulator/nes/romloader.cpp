@@ -6,6 +6,8 @@
 #include "../unittest/framework.h"
 
 #include "internals.h"
+#include "debug.h"
+#include "rom.h"
 
 static MIRRORING mirroring;
 static uint8_t mapper;
@@ -39,7 +41,7 @@ namespace rom
 		fread(nesMagic,4,1,fp);
 		if (memcmp(nesMagic,"NES",3))
 		{
-			puts("[X] loadRom: Invalid File Signature");
+			ERROR(INVALID_ROM, INVALID_FILE_SIGNATURE);
 			goto onError;
 		}
 
@@ -85,7 +87,7 @@ namespace rom
 		if (prgCount != fread(imageData, 0x4000, prgCount, fp))
 		{
 	incomplete:
-			puts("[X] loadRom: File is incomplete.");
+			ERROR(INVALID_ROM, UNEXPECTED_END_OF_FILE);
 	onError:
 			fclose(fp);
 			return 0;

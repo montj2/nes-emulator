@@ -53,7 +53,7 @@ public:
 		return *this;
 	}
 
-	// auto-wrap value setter
+	// auto-wrap value setter (no warning when value out of range)
 	bit_field& operator () (const T data)
 	{
 		_value = data&MASK;

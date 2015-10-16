@@ -101,8 +101,8 @@ void TestFramework::deleteAll()
 }
 
 
-void TestFramework::assertion(const wchar_t * expression, const wchar_t * file, unsigned long lineNumber, TestCase * obj)
+void TestFramework::assertion(const wchar_t * expression, const wchar_t * file, unsigned long line_number, TestCase * obj)
 {
-	wprintf(L"[X] Assertion failed: %s\n[X] Location: %s: %ld", expression, file, lineNumber);
+	wprintf(L"[X] Assertion failed: %s\n[X] Location: %s: %ld\n", expression, file, line_number);
 	__debugbreak();
 }

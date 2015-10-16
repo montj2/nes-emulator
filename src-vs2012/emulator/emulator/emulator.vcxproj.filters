@@ -51,6 +51,12 @@
     <ClInclude Include="nes\cpu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="nes\rom.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="nes\debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

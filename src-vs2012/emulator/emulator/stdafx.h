@@ -14,4 +14,6 @@
 #include <stdint.h>
 #include <assert.h>
 
+#include <intrin.h>
+
 // TODO: reference additional headers your program requires here

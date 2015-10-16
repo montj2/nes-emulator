@@ -50,7 +50,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;WANT_STATISTICS;WANT_MEM_PROTECTION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CallingConvention>FastCall</CallingConvention>
       <ExceptionHandling>false</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -84,9 +84,11 @@
   <ItemGroup>
     <ClInclude Include="macros.h" />
     <ClInclude Include="nes\cpu.h" />
+    <ClInclude Include="nes\debug.h" />
     <ClInclude Include="nes\internals.h" />
     <ClInclude Include="nes\mmc.h" />
     <ClInclude Include="nes\opcodes.h" />
+    <ClInclude Include="nes\rom.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="types\bitfield.h" />

@@ -82,3 +82,5 @@ inline T min(const T& x,const T& y) {return x<y?x:y;}
 
 template <typename T>
 inline T max(const T& x,const T& y) {return x>y?x:y;}
+
+#define CASE_ENUM_RETURN_STRING(ENUM) case ENUM: return L#ENUM

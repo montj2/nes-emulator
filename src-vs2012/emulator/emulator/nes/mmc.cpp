@@ -6,10 +6,11 @@
 #include "../unittest/framework.h"
 
 #include "internals.h"
+#include "debug.h"
 #include "mmc.h"
 
 // NES main memory
-__declspec(align(0x1000))
+__declspec(align(64))
 struct NESRAM ram;
 
 // addresses of currently selected prg-rom banks.
@@ -32,19 +33,22 @@ namespace mmc
 	{
 		switch (mapper_type)
 		{
-		case 0: // no mapping
+		case 0: // no mapper
 			if (image_size == 0x8000) // 32K of code
 				bankSwitch(0, 1, 2, 3, image);
 			else if (image_size == 0x4000) // 16K of code
 				bankSwitch(0, 1, 0, 1, image);
 			else
-				return false;
+			{
+				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE);
+				break;
+			}
 
 			return true;
-
-		default: // unknown mapper
-			return false;
 		}
+		// unknown mapper
+		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE);
+		return false;
 	}
 
 	void reset()
@@ -54,6 +58,22 @@ namespace mmc
 
 		// flush memory
 		memset(&ram,0,sizeof(ram));
+	}
+
+	opcode_t fetchOpcode(const maddr_t pc)
+	{
+#ifdef WANT_MEM_PROTECTION
+		if (!MSB(pc)) // address out of range [$8000, $FFFF]
+		{
+			FATAL_ERROR(INVALID_MEMORY_ACCESS, MEMORY_NON_EXECUTABLE);
+		}
+#endif
+		return ram.bank8[pc-0x8000];
+	}
+
+	byte_t fetchByteOperand(const maddr_t pc)
+	{
+		return 0;
 	}
 }
 

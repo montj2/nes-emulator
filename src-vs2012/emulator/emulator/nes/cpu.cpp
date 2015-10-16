@@ -12,15 +12,15 @@
 
 enum PSW
 {
-    F_CARRY=0x1,
-    F_ZERO=0x2,
-    F_INTERRUPT_OFF=0x4,
-    F_BCD=0x8,
+	F_CARRY=0x1,
+	F_ZERO=0x2,
+	F_INTERRUPT_OFF=0x4,
+	F_BCD=0x8,
 	F_DECIMAL=F_BCD,
-    F_BREAK=0x10,
-    F_NOTUSED=0x20, // undefined (always set)
-    F_OVERFLOW=0x40,
-    F_NEGATIVE=0x80,
+	F_BREAK=0x10,
+	F_NOTUSED=0x20, // undefined (always set)
+	F_OVERFLOW=0x40,
+	F_NEGATIVE=0x80,
 	F_SIGN=F_NEGATIVE,
 	F__NV=F_NEGATIVE|F_OVERFLOW
 };
@@ -41,7 +41,7 @@ static maddr_t		PC; // program counter
 #define SUM fast_cast(temp, alu_t)
 
 // Run-time statistics
-#ifndef NDEBUG
+#ifdef WANT_STATISTICS
 	static long long totInstructions;
 	static long long totCycles;
 	static long long totInterrupts;
@@ -59,7 +59,7 @@ namespace interrupt
 	static const maddr_t VECTOR_BRK(0xFFFE);
 
 	static IRQ currentIRQ;
-	
+
 	void clear()
 	{
 		currentIRQ = IRQ::NONE;
@@ -87,16 +87,16 @@ namespace stack
 {
 	static inline void pushByte(const byte_t byte)
 	{
-		#ifdef MONITOR_STACK
-			printf("[S] Push 0x%02X to $%02X\n",byte,valueOf(SP));
-		#endif
-		
+#ifdef MONITOR_STACK
+		printf("[S] Push 0x%02X to $%02X\n",byte,valueOf(SP));
+#endif
+
 		ramSt[valueOf(SP)]=byte;
-		
+
 		dec(SP);
-		#ifndef ALLOW_ADDRESS_WRAP
-			assert(SP.belowMax());
-		#endif
+#ifndef ALLOW_ADDRESS_WRAP
+		assert(SP.belowMax());
+#endif
 	}
 
 	static inline void pushReg(const reg_bit_field_t& reg)
@@ -107,17 +107,17 @@ namespace stack
 	static inline void pushWord(const word_t word)
 	{
 		dec(SP);
-		#ifdef MONITOR_STACK
-			printf("[S] Push 0x%04X to $%02X\n",word,valueOf(SP));
-		#endif
+#ifdef MONITOR_STACK
+		printf("[S] Push 0x%04X to $%02X\n",word,valueOf(SP));
+#endif
 		assert(SP.belowMax());
 
 		*(uint16_t*)&(ramSt[valueOf(SP)])=(word);
 
 		dec(SP);
-		#ifndef ALLOW_ADDRESS_WRAP
-			assert(SP.belowMax());
-		#endif
+#ifndef ALLOW_ADDRESS_WRAP
+		assert(SP.belowMax());
+#endif
 	}
 
 	static inline void pushPC()
@@ -127,17 +127,17 @@ namespace stack
 
 	static inline byte_t popByte()
 	{
-		#ifndef ALLOW_ADDRESS_WRAP
-			assert(SP.belowMax());
-		#endif
+#ifndef ALLOW_ADDRESS_WRAP
+		assert(SP.belowMax());
+#endif
 		return ramSt[inc(SP)];
 	}
 
 	static inline word_t popWord()
 	{
-		#ifndef ALLOW_ADDRESS_WRAP
-			assert(SP.belowMax() && SP.plus(1).belowMax());
-		#endif
+#ifndef ALLOW_ADDRESS_WRAP
+		assert(SP.belowMax() && SP.plus(1).belowMax());
+#endif
 		SP+=2;
 		return *(uint16_t*)&(ramSt[SP.minus(1)]);
 	}
@@ -341,14 +341,14 @@ public:
 
 		stack::pushPC();
 		stack::pushReg(regY);
-		
+
 		word_t tmp16;
 		tmp16=stack::popWord();
 		tassert(tmp16==0xAA03);
-		
+
 		tmp=stack::popByte();
 		tassert(tmp==0xFF);
-		
+
 		printf("[ ] Register memory at 0x%p\n", &A);
 
 		return SUCCESS;
