@@ -28,7 +28,7 @@ public:
 	// $8000 PRG-ROM
     uint8_t bank8[8192], bankA[8192];
 
-	// C8000 Mirror of PRG-ROM
+	// $C000 Mirror of PRG-ROM
     uint8_t bankC[8192], bankE[8192];
 
 public:
