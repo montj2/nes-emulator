@@ -63,14 +63,95 @@ namespace mmc
 	{
 #ifdef WANT_MEM_PROTECTION
 		// check if address in code section [$8000, $FFFF]
-		ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE);
+		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(pc));
 #endif
-		return ram.bank8[pc-0x8000];
+		return ram.bank8[pc^0x8000];
 	}
 
-	byte_t fetchByteOperand(const maddr_t pc)
+	byte_t fetchByteOperand(const maddr_t addr)
 	{
-		return 0;
+#ifdef WANT_MEM_PROTECTION
+		// check if address in code section [$8000, $FFFF]
+		FATAL_ERROR_UNLESS(MSB(addr), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(addr));
+#endif
+		return ram.bank8[addr^0x8000];
+	}
+
+	word_t fetchWordOperand(const maddr_t addr)
+	{
+#ifdef WANT_MEM_PROTECTION
+		// check if address in code section [$8000, $FFFF]
+		FATAL_ERROR_UNLESS(MSB(addr), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(addr));
+#endif
+		FATAL_ERROR_IF(addr.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
+
+		return *(uint16_t*)&ram.bank8[addr^0x8000];
+	}
+
+	byte_t loadZPByte(const addr8_t zp)
+	{
+		return ram0p[zp];
+	}
+
+	word_t loadZPWord(const addr8_t zp)
+	{
+#ifndef ALLOW_ADDRESS_WRAP
+		FATAL_ERROR_IF(zp.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
+#else
+		if (zp.reachMax())
+		{
+			 return (((word_t)ram0p[0])<<8)|ram0p[zp];
+		}
+#endif
+		return *(uint16_t*)&ram0p[zp];
+	}
+
+	byte_t read(const maddr_t addr)
+	{
+		switch (addr>>13) // bank number/2
+		{
+		case 0: //[$0000,$2000)
+			return ram.bank0[addr&0x7FF];
+		case 1: //[$2000,$4000)
+			// TODO: read ppu register
+			break;
+		case 2: //[$4000,$6000)
+			// TODO: read IO register
+			break;
+		case 3:
+			return ram.bank6[addr&0x1FFFF];
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			return ram.bank8[addr^0x8000];
+		}
+		ERROR(INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_READ, "addr", valueOf(addr));
+		return ~0;
+	}
+
+	void write(const maddr_t addr, const byte_t value)
+	{
+		switch (addr>>13) // bank number/2
+		{
+			case 0: //[$0000,$2000) Internal RAM
+				ram.bank0[addr&0x7FF]=value;
+				return;
+			case 1: //[$2000,$4000) PPU Registers
+				// write to ppu register
+				break;
+			case 3: //[$6000,$8000) SRAM
+				ram.bank6[addr&0x1FFF]=value;
+				return;
+			case 4: //[$8000,$A000)
+			case 5: //[$A000,$C000)
+			case 6: //[$C000,$E000)
+			case 7: //[$E000,$FFFF]
+				break;
+			case 2: //[$4000,$6000) Other Registers
+				break;
+		}
+		ERROR(INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_WRITTEN, "addr", valueOf(addr));
 	}
 }
 

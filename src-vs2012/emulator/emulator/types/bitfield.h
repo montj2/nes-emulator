@@ -4,9 +4,10 @@ class bit_field: public value_object<T> {
 public:
 	enum :T
 	{
-		MASK=BIT_MASK(T,bits),
-		MAX=MASK
+		MASK=BIT_MASK(T,bits)
 	};
+
+	static const bit_field MAX;
 
 	enum
     {
@@ -264,3 +265,6 @@ public:
 		selfRcr(LSB(*this));
 	}
 };
+
+template <typename T, int bits>
+const bit_field<T,bits> bit_field<T,bits>::MAX = bit_field<T,bits>(MASK);

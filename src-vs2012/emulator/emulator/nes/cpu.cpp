@@ -66,11 +66,28 @@ namespace interrupt
 		currentIRQ = IRQ::NONE;
 	}
 
-	void request(const IRQ irqType)
+	void request(const IRQ type)
 	{
-		assert(irqType != IRQ::NONE);
-		currentIRQ = irqType;
+		vassert(type != IRQ::NONE);
+		ERROR_IF(pending(), ILLEGAL_OPERATION, IRQ_ALREADY_PENDING);
+
+		currentIRQ = type;
 		STAT_ADD(totInterrupts, 1);
+	}
+
+	// return address of interrupt handler
+	maddr_t handler(const IRQ type)
+	{
+		vassert(type != IRQ::NONE);
+
+		maddr_t vector;
+		switch (type)
+		{
+		case IRQ::RST: vector=VECTOR_RESET;break;
+		case IRQ::BRK: vector=VECTOR_BRK;break;
+		case IRQ::NMI: vector=VECTOR_NMI;break;
+		}
+		return maddr_t(mmc::fetchWordOperand(vector));
 	}
 
 	bool pending()
@@ -78,7 +95,7 @@ namespace interrupt
 		return currentIRQ != IRQ::NONE;
 	}
 
-	IRQ type()
+	IRQ current()
 	{
 		return currentIRQ;
 	}
@@ -240,12 +257,13 @@ namespace cpu
 
 		// clear IRQ state
 		interrupt::clear();
+		// set PC to the entry point
+		interrupt::request(IRQ::RST);
+		printf("%x\n", mmc::fetchByteOperand(maddr_t(0x2000)));
 	}
 
 	void start()
 	{
-		// set PC to the entry point
-		interrupt::request(IRQ::RST);
 	}
 
 	int nextInstruction()

@@ -55,4 +55,13 @@ namespace mmc
 
 	void bankSwitch(int reg8, int regA, int regC, int regE, const uint8_t* image);
 	bool setup(int mapper_type, const uint8_t* image, const size_t image_size);
+
+	opcode_t fetchOpcode(const maddr_t pc);
+	byte_t fetchByteOperand(const maddr_t addr);
+	word_t fetchWordOperand(const maddr_t addr);
+	byte_t loadZPByte(const addr8_t zp);
+	word_t loadZPWord(const addr8_t zp);
+
+	byte_t read(const maddr_t addr);
+	void write(const maddr_t addr, const byte_t value);
 }
