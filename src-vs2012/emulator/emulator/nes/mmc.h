@@ -35,12 +35,12 @@ public:
 	inline uint8_t& data(const size_t ptr)
 	{
 		vassert(ptr<0x800 || ptr>=0x6000);
-		return *((uint8_t*)this+ptr);
+		return bank0[ptr];
 	}
 
 	inline uint8_t* page(const size_t num)
 	{
-		return (uint8_t*)this+(num<<8);
+		return &bank0[num<<8];
 	}
 };
 
@@ -56,11 +56,11 @@ namespace mmc
 	void bankSwitch(int reg8, int regA, int regC, int regE, const uint8_t* image);
 	bool setup(int mapper_type, const uint8_t* image, const size_t image_size);
 
-	opcode_t fetchOpcode(const maddr_t pc);
-	byte_t fetchByteOperand(const maddr_t addr);
-	word_t fetchWordOperand(const maddr_t addr);
-	byte_t loadZPByte(const addr8_t zp);
-	word_t loadZPWord(const addr8_t zp);
+	extern __forceinline opcode_t fetchOpcode(maddr_t& pc);
+	extern __forceinline maddr8_t fetchByteOperand(maddr_t& pc);
+	extern __forceinline maddr_t fetchWordOperand(maddr_t& pc);
+	extern __forceinline byte_t loadZPByte(const maddr8_t zp);
+	extern __forceinline word_t loadZPWord(const maddr8_t zp);
 
 	byte_t read(const maddr_t addr);
 	void write(const maddr_t addr, const byte_t value);

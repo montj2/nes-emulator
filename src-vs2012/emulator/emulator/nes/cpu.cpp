@@ -12,19 +12,24 @@
 #include "cpu.h"
 
 // Register file
-__declspec(align(32))
+__declspec(align(32)) // try to make registers fit into a cache line of host CPU
 static _reg8_t		A; // accumulator
 static _reg8_t		X, Y; // index
-static addr8_t		SP; // stack pointer
+static maddr8_t		SP; // stack pointer
 static flag_set<_reg8_t, PSW, 8> P; // status
 static maddr_t		PC; // program counter
 
-// bit field wrappers for register file
+static maddr_t		addr; // effective address
+#define EA addr
+
+static byte_t		value; // operand
+
+// alias with wrapping for register file
 typedef bit_field<_reg8_t, 8> reg_bit_field_t;
 #define regA fast_cast(A, reg_bit_field_t)
 #define regX fast_cast(X, reg_bit_field_t)
 #define regY fast_cast(Y, reg_bit_field_t)
-#define M fast_cast(value, operand_t)
+#define M fast_cast(value, operandb_t)
 #define SUM fast_cast(temp, alu_t)
 
 // Run-time statistics
@@ -52,7 +57,7 @@ namespace interrupt
 		pendingIRQs.clearAll();
 	}
 
-	void clear(IRQ type)
+	static void clear(IRQ type)
 	{
 		assert(pendingIRQs[type]);
 		pendingIRQs.clear(type);
@@ -68,7 +73,7 @@ namespace interrupt
 	}
 
 	// return address of interrupt handler
-	maddr_t handler(const IRQ type)
+	static maddr_t handler(const IRQ type)
 	{
 		vassert(type != IRQ::NONE);
 
@@ -82,14 +87,19 @@ namespace interrupt
 		return maddr_t(mmc::fetchWordOperand(vector));
 	}
 
-	bool pending()
+	static bool pending()
 	{
-		vassert(!pendingIRQs[IRQ::NONE]);
 		return pendingIRQs.any();
 	}
 
+	bool pending(const IRQ type)
+	{
+		vassert(type != IRQ::NONE);
+		return pendingIRQs[type];
+	}
+
 	// return current highest-priority IRQ
-	IRQ current()
+	static IRQ current()
 	{
 		if (pendingIRQs[IRQ::RST]) return IRQ::RST;
 		if (pendingIRQs[IRQ::NMI]) return IRQ::NMI;
@@ -106,7 +116,7 @@ namespace stack
 		printf("[S] Push 0x%02X to $%02X\n",byte,valueOf(SP));
 #endif
 
-		ramSt[valueOf(SP)]=byte;
+		ramSt[SP]=byte;
 
 		dec(SP);
 #ifndef ALLOW_ADDRESS_WRAP
@@ -116,7 +126,7 @@ namespace stack
 
 	static inline void pushReg(const reg_bit_field_t& reg)
 	{
-		pushByte(valueOf(reg));
+		pushByte(reg);
 	}
 
 	static inline void pushWord(const word_t word)
@@ -127,7 +137,7 @@ namespace stack
 #endif
 		FATAL_ERROR_IF(SP.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
 
-		*(uint16_t*)&(ramSt[valueOf(SP)])=(word);
+		*(uint16_t*)&(ramSt[SP])=(word);
 
 		dec(SP);
 #ifndef ALLOW_ADDRESS_WRAP
@@ -248,6 +258,7 @@ namespace cpu
 		// reset status register
 		P.clearAll();
 		P.set(F_RESERVED);
+		P.set(F_ZERO);
 
 		// reset stack pointer
 		stack::reset();
@@ -262,8 +273,140 @@ namespace cpu
 	{
 	}
 
+	static int readEffectiveAddress(const opcode_t code, const M6502_OPCODE& op)
+	{
+		int cycles=0;
+		
+		invalidate(EA);
+		invalidate(M);
+
+		switch (op.addrmode)
+		{
+		case ADR_IMP: // Ignore. Address is implied in instruction.
+			break;
+
+		case ADR_ZP: // Zero Page mode. Use the address given after the opcode, but without high byte.
+			addr=mmc::fetchByteOperand(PC);
+			value=mmc::read(addr);
+			break;
+
+		case ADR_REL: // Relative mode.
+			addr=(char)valueOf(mmc::fetchByteOperand(PC));
+			addr+=PC;
+			break;
+
+		case ADR_ABS: // Absolute mode. Use the two bytes following the opcode as an address.
+			addr=mmc::fetchWordOperand(PC);
+			value=mmc::read(addr);
+			break;
+
+		case ADR_IMM: //Immediate mode. The value is given after the opcode.
+			addr=PC;
+			value=mmc::fetchByteOperand(PC);
+			break;
+
+		case ADR_ZPX:
+			// Zero Page Indexed mode, X as index. Use the address given
+			// after the opcode, then add the
+			// X register to it to get the final address.
+			addr=mmc::fetchByteOperand(PC).plus(X);
+			value=mmc::read(addr);
+			break;
+
+		case ADR_ZPY:
+			// Zero Page Indexed mode, Y as index. Use the address given
+			// after the opcode, then add the
+			// Y register to it to get the final address.
+			addr=mmc::fetchByteOperand(PC).plus(Y);
+			value=mmc::read(addr);
+			break;
+
+		case ADR_ABSX:
+			// Absolute Indexed Mode, X as index. Same as zero page
+			// indexed, but with the high byte.
+			addr=mmc::fetchWordOperand(PC);
+			if ((valueOf(addr)&0xFF00)!=((valueOf(addr)+X)&0xFF00)) ++cycles;
+			addr+=X;
+			value=mmc::read(addr);
+			break;
+
+		case ADR_ABSY:
+			// Absolute Indexed Mode, Y as index. Same as zero page
+			// indexed, but with the high byte.
+			addr=mmc::fetchWordOperand(PC);
+			if ((valueOf(addr)&0xFF00)!=((valueOf(addr)+Y)&0xFF00)) ++cycles;
+			addr+=Y;
+			value=mmc::read(addr);
+			break;
+
+		case ADR_INDX:
+			addr=mmc::fetchByteOperand(PC).plus(X);
+			addr=mmc::loadZPWord(maddr8_t(addr));
+			value=mmc::read(addr);
+			break;
+
+		case ADR_INDY:
+			addr=mmc::loadZPWord(mmc::fetchByteOperand(PC));
+			if ((valueOf(addr)&0xFF00)!=((valueOf(addr)+Y)&0xFF00)) ++cycles;
+			addr+=Y;
+			value=mmc::read(addr);
+			break;
+
+		case ADR_IND:
+			// Indirect Absolute mode. Find the 16-bit address contained
+			// at the given location.
+			addr=mmc::fetchWordOperand(PC);
+			addr=makeWord(mmc::read(addr), mmc::read(maddr_t(((valueOf(addr)+1)&0x00FF)|(valueOf(addr)&0xFF00))));
+			value=mmc::read(addr);
+			break;
+
+		default:
+			FATAL_ERROR(INVALID_INSTRUCTION, INVALID_ADDRESS_MODE, "instruction", op.inst, "adrmode", op.addrmode);
+			break;
+		}
+
+		return cycles;
+	}
+
 	int nextInstruction()
 	{
+		int cycles=0;
+
+		// poll interrupts
+		if (interrupt::pending())
+		{
+			IRQ irq = interrupt::current();
+			if (irq != IRQ::BRK || !P[F_INTERRUPT_OFF])
+			{
+				// jump to interrupt handler
+				PC = interrupt::handler(irq);
+				interrupt::clear(irq);
+			}
+		}
+
+		// step1: fetch instruction
+		const maddr_t opaddr = PC;
+		const opcode_t opcode = mmc::fetchOpcode(PC);
+
+		// step2: decode
+		const M6502_OPCODE op = opcode::decode(opcode);
+		ERROR_UNLESS(opcode::usual(opcode), INVALID_INSTRUCTION, INVALID_OPCODE, "opcode", opcode, "instruction", op.inst);
+
+		// step3: read effective address & operands
+		cycles += readEffectiveAddress(opcode, op);
+		assert((valueOf(PC)-valueOf(opaddr)) == op.size);
+
+		debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
+
+		// step4: execution
+		_alutemp_t temp;
+
+		assert(P[F_RESERVED]);
+
+		// update statistics
+		STAT_ADD(totInstructions, 1);
+		STAT_ADD(numInstructionsPerOpcode[(int)op.inst], 1);
+		STAT_ADD(numInstructionsPerAdrMode[(int)op.addrmode], 1);
 		return 0;
 	}
 }

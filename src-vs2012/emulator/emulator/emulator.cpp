@@ -50,7 +50,12 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 
 			// setup cpu
 			cpu::reset();
-			// start execution()
+
+			// start execution
+			for (int i=1;i<=100;i++)
+			{
+				cpu::nextInstruction();
+			}
 		}else
 		{
 			puts("[X] Unable to load the rom.");

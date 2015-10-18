@@ -6,9 +6,16 @@
 
 #include "internals.h"
 #include "debug.h"
+#include "opcodes.h"
 
 namespace debug
 {
+	void printDisassembly(const maddr_t pc, const opcode_t opcode, const _reg8_t rx, const _reg8_t ry, const maddr_t addr, const operandb_t value)
+	{
+		const M6502_OPCODE op = opcode::decode(opcode);
+		printf("%04X %02X\t%s EA=%04X\n", valueOf(pc), opcode, opcode::instName(op.inst), addr);
+	}
+
 	// a NULL at the end of argv is REQUIRED!
 	static void printToConsole(int type, const wchar_t * typestr, int stype, const wchar_t * stypestr, const wchar_t * file, const wchar_t * function_name, unsigned long line_number, va_list argv)
 	{
@@ -53,6 +60,7 @@ namespace debug
 			CASE_ENUM_RETURN_STRING(MEMORY_CANT_BE_WRITTEN);
 
 			CASE_ENUM_RETURN_STRING(INVALID_OPCODE);
+			CASE_ENUM_RETURN_STRING(INVALID_ADDRESS_MODE);
 
 			CASE_ENUM_RETURN_STRING(IRQ_ALREADY_PENDING);
 

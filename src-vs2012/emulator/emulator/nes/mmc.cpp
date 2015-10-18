@@ -10,7 +10,7 @@
 #include "mmc.h"
 
 // NES main memory
-__declspec(align(64))
+__declspec(align(0x1000))
 struct NESRAM ram;
 
 // addresses of currently selected prg-rom banks.
@@ -59,41 +59,48 @@ namespace mmc
 		memset(&ram,0,sizeof(ram));
 	}
 
-	opcode_t fetchOpcode(const maddr_t pc)
+	opcode_t fetchOpcode(maddr_t& pc)
 	{
 #ifdef WANT_MEM_PROTECTION
 		// check if address in code section [$8000, $FFFF]
 		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(pc));
 #endif
-		return ram.bank8[pc^0x8000];
+		const opcode_t opcode = ram.bank8[pc^0x8000];
+		inc(pc);
+		return opcode;
 	}
 
-	byte_t fetchByteOperand(const maddr_t addr)
+	operandb_t fetchByteOperand(maddr_t& pc)
 	{
 #ifdef WANT_MEM_PROTECTION
 		// check if address in code section [$8000, $FFFF]
-		FATAL_ERROR_UNLESS(MSB(addr), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(addr));
+		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(pc));
 #endif
-		return ram.bank8[addr^0x8000];
+		operandb_t operand;
+		operand(ram.bank8[pc^0x8000]);
+		inc(pc);
+		return operand;
 	}
 
-	word_t fetchWordOperand(const maddr_t addr)
+	operandw_t fetchWordOperand(maddr_t& pc)
 	{
 #ifdef WANT_MEM_PROTECTION
 		// check if address in code section [$8000, $FFFF]
-		FATAL_ERROR_UNLESS(MSB(addr), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(addr));
+		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(pc));
 #endif
-		FATAL_ERROR_IF(addr.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
-
-		return *(uint16_t*)&ram.bank8[addr^0x8000];
+		FATAL_ERROR_IF(pc.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
+		operandw_t operand;
+		operand(*(uint16_t*)&ram.bank8[pc^0x8000]);
+		pc+=2;
+		return operand;
 	}
 
-	byte_t loadZPByte(const addr8_t zp)
+	byte_t loadZPByte(const maddr8_t zp)
 	{
 		return ram0p[zp];
 	}
 
-	word_t loadZPWord(const addr8_t zp)
+	word_t loadZPWord(const maddr8_t zp)
 	{
 #ifndef ALLOW_ADDRESS_WRAP
 		FATAL_ERROR_IF(zp.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);

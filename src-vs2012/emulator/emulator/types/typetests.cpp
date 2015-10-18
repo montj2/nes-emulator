@@ -202,7 +202,7 @@ public:
 
 	virtual TestResult run()
 	{
-		addr8_t bf;
+		maddr8_t bf;
 		flag_set<_reg8_t,PSW,8> fs;
 
 		bf=0x81;
@@ -211,7 +211,7 @@ public:
 
 		tassert(valueOf(bf.asFlagSet<PSW>())==fs.asBitField());
 
-		addr8_t bf2(fs);
+		maddr8_t bf2(fs);
 
 		tassert(bf2 == bf);
 

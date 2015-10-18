@@ -110,9 +110,9 @@ namespace opcode
 {
 	void initTable();
 
-	M6502_OPCODE parse(const opcode_t opcode);
-	const char* instName(const M6502_INST inst);
-	const char* instName(const opcode_t opcode);
-	const char* explainAddrMode(const M6502_ADDRMODE adrmode);
-	bool usual(const opcode_t opcode);
+	extern __forceinline M6502_OPCODE decode(const opcode_t opcode);
+	extern __forceinline const char* instName(const M6502_INST inst);
+	extern __forceinline const char* instName(const opcode_t opcode);
+	extern __forceinline const char* explainAddrMode(const M6502_ADDRMODE adrmode);
+	extern __forceinline bool usual(const opcode_t opcode);
 }

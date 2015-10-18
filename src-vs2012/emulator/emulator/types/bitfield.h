@@ -158,9 +158,9 @@ public:
 		return *this;
 	}
 
-	bit_field& operator &= (const bit_field& other)
+	bit_field& operator &= (const T other)
 	{
-		_value&=other._value;
+		_value&=other;
 		return *this;
 	}
 
@@ -186,6 +186,11 @@ public:
 	{
 		--bf._value;
 		return bf._value&=MASK;
+	}
+
+	friend void invalidate(bit_field& bf)
+	{
+		bf(0xCCCCCCCC);
 	}
 
 	void selfRTrim()

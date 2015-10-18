@@ -15,7 +15,7 @@ static const char* instructionName[(int)_INS_MAX];
 
 namespace opcode
 {
-	M6502_OPCODE parse(const opcode_t opcode)
+	M6502_OPCODE decode(const opcode_t opcode)
 	{
 		return opdata[opcode];
 	}

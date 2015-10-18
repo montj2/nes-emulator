@@ -23,17 +23,24 @@
 	typedef uint32_t uint_t;
 #endif // EXACT_TYPE
 
+inline word_t makeWord(byte_t lo, byte_t hi)
+{
+	vassert(lo<=0xFF && hi<=0xFF);
+	return ((word_t)lo)|(((word_t)hi)<<8);
+}
+
 // address
 typedef bit_field<_addr16_t,16> maddr_t;
 typedef bit_field<_addr15_t,15> scroll_t, addr15_t;
 typedef bit_field<_addr14_t,14> vaddr_t, addr14_t;
-typedef bit_field<_addr8_t,8> addr8_t, saddr_t;
+typedef bit_field<_addr8_t,8> maddr8_t, saddr_t;
 
 // cpu
 typedef byte_t opcode_t;
 
 // alu
-typedef bit_field<byte_t,8> operand_t;
+typedef bit_field<byte_t,8> operandb_t;
+typedef bit_field<word_t,16> operandw_t;
 typedef bit_field<_alutemp_t,8> alu_t;
 
 // ppu
@@ -75,6 +82,7 @@ enum EMUERRORSUBTYPE {
 
 	// INVALID_INSTRUCTION
 	INVALID_OPCODE,
+	INVALID_ADDRESS_MODE,
 
 	// ILLEGAL_OPERATION
 	IRQ_ALREADY_PENDING

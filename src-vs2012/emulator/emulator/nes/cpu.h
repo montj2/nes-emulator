@@ -17,20 +17,18 @@ enum PSW
 // irq types
 enum IRQ
 {
-    NONE=0,
-    NMI,
-    BRK,
-	RST
+    NONE=0x0,
+    NMI=0x1,
+    BRK=0x2,
+	RST=0x4
 };
 
 namespace interrupt
 {
 	// global functions
-	void clear(const IRQ type);
 	void request(const IRQ type);
 
-	bool pending();
-	IRQ current();
+	bool pending(const IRQ type);
 }
 
 namespace cpu
