@@ -15,7 +15,7 @@ public:
     };
 
 protected:
-	static bit_field _unchecked_wrapper(const T data)
+	static inline bit_field _unchecked_wrapper(const T data)
     {
         bit_field ret;
         ret._value = data;
@@ -26,7 +26,7 @@ public:
 	// ctors
 	bit_field() {};
 	bit_field(const bit_field& other) {_value = other._value;} // copy ctor (w/o checking)
-    bit_field& operator =(const bit_field& other) {_value = other._value;} // copy assignment ctor (w/o checking)
+    bit_field& operator =(const bit_field& other) {_value = other._value; return *this;} // copy assignment ctor (w/o checking)
 
 	template <typename ET>
 	bit_field(const flag_set<T, ET, bits>& fs)

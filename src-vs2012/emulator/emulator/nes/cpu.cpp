@@ -273,7 +273,7 @@ namespace cpu
 	{
 	}
 
-	static int readEffectiveAddress(const opcode_t code, const M6502_OPCODE& op)
+	static int readEffectiveAddress(const opcode_t code, const M6502_OPCODE op)
 	{
 		int cycles=0;
 		
@@ -361,7 +361,7 @@ namespace cpu
 			break;
 
 		default:
-			FATAL_ERROR(INVALID_INSTRUCTION, INVALID_ADDRESS_MODE, "instruction", op.inst, "adrmode", op.addrmode);
+			FATAL_ERROR(INVALID_INSTRUCTION, INVALID_ADDRESS_MODE, "opcode", code, "instruction", op.inst, "adrmode", op.addrmode);
 			break;
 		}
 
@@ -407,7 +407,8 @@ namespace cpu
 		STAT_ADD(totInstructions, 1);
 		STAT_ADD(numInstructionsPerOpcode[(int)op.inst], 1);
 		STAT_ADD(numInstructionsPerAdrMode[(int)op.addrmode], 1);
-		return 0;
+		STAT_ADD(totCycles, cycles);
+		return cycles;
 	}
 }
 
