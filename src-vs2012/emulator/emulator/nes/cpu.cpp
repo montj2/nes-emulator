@@ -11,21 +11,6 @@
 #include "opcodes.h"
 #include "cpu.h"
 
-enum PSW
-{
-	F_CARRY=0x1,
-	F_ZERO=0x2,
-	F_INTERRUPT_OFF=0x4,
-	F_BCD=0x8,
-	F_DECIMAL=F_BCD,
-	F_BREAK=0x10,
-	F_NOTUSED=0x20, // undefined (always set)
-	F_OVERFLOW=0x40,
-	F_NEGATIVE=0x80,
-	F_SIGN=F_NEGATIVE,
-	F__NV=F_NEGATIVE|F_OVERFLOW
-};
-
 // Register file
 __declspec(align(32))
 static _reg8_t		A; // accumulator
@@ -35,6 +20,7 @@ static flag_set<_reg8_t, PSW, 8> P; // status
 static maddr_t		PC; // program counter
 
 // bit field wrappers for register file
+typedef bit_field<_reg8_t, 8> reg_bit_field_t;
 #define regA fast_cast(A, reg_bit_field_t)
 #define regX fast_cast(X, reg_bit_field_t)
 #define regY fast_cast(Y, reg_bit_field_t)
@@ -57,21 +43,27 @@ namespace interrupt
 {
 	static const maddr_t VECTOR_NMI(0xFFFA);
 	static const maddr_t VECTOR_RESET(0xFFFC);
-	static const maddr_t VECTOR_BRK(0xFFFE);
+	static const maddr_t VECTOR_BREAK(0xFFFE);
 
-	static IRQ currentIRQ;
+	static flag_set<_reg8_t, IRQ, 8> pendingIRQs;
 
-	void clear()
+	static void clearAll()
 	{
-		currentIRQ = IRQ::NONE;
+		pendingIRQs.clearAll();
+	}
+
+	void clear(IRQ type)
+	{
+		assert(pendingIRQs[type]);
+		pendingIRQs.clear(type);
 	}
 
 	void request(const IRQ type)
 	{
 		vassert(type != IRQ::NONE);
-		ERROR_IF(pending(), ILLEGAL_OPERATION, IRQ_ALREADY_PENDING);
+		ERROR_IF(pendingIRQs[type], ILLEGAL_OPERATION, IRQ_ALREADY_PENDING);
 
-		currentIRQ = type;
+		pendingIRQs.set(type);
 		STAT_ADD(totInterrupts, 1);
 	}
 
@@ -83,21 +75,26 @@ namespace interrupt
 		maddr_t vector;
 		switch (type)
 		{
-		case IRQ::RST: vector=VECTOR_RESET;break;
-		case IRQ::BRK: vector=VECTOR_BRK;break;
-		case IRQ::NMI: vector=VECTOR_NMI;break;
+		case IRQ::RST: vector=VECTOR_RESET; break;
+		case IRQ::BRK: vector=VECTOR_BREAK; break;
+		case IRQ::NMI: vector=VECTOR_NMI; break;
 		}
 		return maddr_t(mmc::fetchWordOperand(vector));
 	}
 
 	bool pending()
 	{
-		return currentIRQ != IRQ::NONE;
+		vassert(!pendingIRQs[IRQ::NONE]);
+		return pendingIRQs.any();
 	}
 
+	// return current highest-priority IRQ
 	IRQ current()
 	{
-		return currentIRQ;
+		if (pendingIRQs[IRQ::RST]) return IRQ::RST;
+		if (pendingIRQs[IRQ::NMI]) return IRQ::NMI;
+		if (pendingIRQs[IRQ::BRK]) return IRQ::BRK;
+		return IRQ::NONE;
 	}
 }
 
@@ -250,16 +247,15 @@ namespace cpu
 
 		// reset status register
 		P.clearAll();
-		P.set(F_NOTUSED);
+		P.set(F_RESERVED);
 
 		// reset stack pointer
 		stack::reset();
 
 		// clear IRQ state
-		interrupt::clear();
+		interrupt::clearAll();
 		// set PC to the entry point
 		interrupt::request(IRQ::RST);
-		printf("%x\n", mmc::fetchByteOperand(maddr_t(0x2000)));
 	}
 
 	void start()

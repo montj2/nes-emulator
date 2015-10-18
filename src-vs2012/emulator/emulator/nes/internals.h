@@ -1,3 +1,4 @@
+// internal type definitions
 #ifdef FAST_TYPE
     typedef unsigned _addr16_t;
     typedef unsigned _addr15_t;
@@ -7,6 +8,7 @@
     typedef unsigned _alutemp_t;
     typedef unsigned byte_t;
     typedef unsigned word_t;
+	typedef unsigned uint_t;
 #endif // FAST_TYPE
 
 #ifdef EXACT_TYPE
@@ -18,6 +20,7 @@
     typedef uint16_t _alutemp_t;
     typedef uint8_t  byte_t;
     typedef uint16_t word_t;
+	typedef uint32_t uint_t;
 #endif // EXACT_TYPE
 
 // address
@@ -27,7 +30,6 @@ typedef bit_field<_addr14_t,14> vaddr_t, addr14_t;
 typedef bit_field<_addr8_t,8> addr8_t, saddr_t;
 
 // cpu
-typedef bit_field<_reg8_t,8> reg_bit_field_t;
 typedef byte_t opcode_t;
 
 // alu
