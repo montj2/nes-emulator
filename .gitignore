@@ -35,6 +35,14 @@
 *.nes
 *.rom
 
+# Run log
+*.log
+*.run
+
+# Dump
+*.dump
+*.dmp
+
 #Visual Studio files
 *.[Oo]bj
 *.user
