@@ -34,7 +34,7 @@ public:
 		_value = valueOf(fs);
 	}
 
-	// restricted auto boxing
+	// restricted checked auto boxing
 	explicit bit_field(const T value)
     {
         assert(0==(value&(~MASK)));
@@ -51,6 +51,15 @@ public:
 	{
 		assert(0==(value&(~MASK)));
 		_value = value;
+		return *this;
+	}
+
+	// unchecked setter for values within a not-bigger range
+	template <class T2, int bits2>
+	bit_field& operator = (const bit_field<T2, bits2>& other)
+	{
+		STATIC_ASSERT(bits2<=bits);
+		_value = valueOf(other);
 		return *this;
 	}
 
