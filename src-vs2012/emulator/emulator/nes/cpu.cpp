@@ -23,6 +23,7 @@ static maddr_t		addr; // effective address
 #define EA addr
 
 static byte_t		value; // operand
+static _alutemp_t	temp;
 
 // alias with wrapping for register file
 typedef bit_field<_reg8_t, 8> reg_bit_field_t;
@@ -48,24 +49,24 @@ namespace interrupt
 {
 	static const maddr_t VECTOR_NMI(0xFFFA);
 	static const maddr_t VECTOR_RESET(0xFFFC);
-	static const maddr_t VECTOR_BREAK(0xFFFE);
+	static const maddr_t VECTOR_IRQ(0xFFFE);
 
-	static flag_set<_reg8_t, IRQ, 8> pendingIRQs;
+	static flag_set<_reg8_t, IRQTYPE, 8> pendingIRQs;
 
 	static void clearAll()
 	{
 		pendingIRQs.clearAll();
 	}
 
-	static void clear(IRQ type)
+	static void clear(IRQTYPE type)
 	{
 		assert(pendingIRQs[type]);
 		pendingIRQs.clear(type);
 	}
 
-	void request(const IRQ type)
+	void request(const IRQTYPE type)
 	{
-		vassert(type != IRQ::NONE);
+		vassert(type != IRQTYPE::NONE);
 		ERROR_IF(pendingIRQs[type], ILLEGAL_OPERATION, IRQ_ALREADY_PENDING);
 
 		pendingIRQs.set(type);
@@ -73,18 +74,22 @@ namespace interrupt
 	}
 
 	// return address of interrupt handler
-	static maddr_t handler(const IRQ type)
+	static maddr_t handler(const IRQTYPE type)
 	{
-		vassert(type != IRQ::NONE);
+		vassert(type != IRQTYPE::NONE);
 
 		maddr_t vector;
 		switch (type)
 		{
-		case IRQ::RST: vector=VECTOR_RESET; break;
-		case IRQ::BRK: vector=VECTOR_BREAK; break;
-		case IRQ::NMI: vector=VECTOR_NMI; break;
+		case IRQTYPE::RST: vector=VECTOR_RESET; break;
+		case IRQTYPE::NMI: vector=VECTOR_NMI; break;
+
+		case IRQTYPE::IRQ:
+		case IRQTYPE::BRK:
+			vector=VECTOR_IRQ;
+			break;
 		}
-		return maddr_t(mmc::fetchWordOperand(vector));
+		return mmc::fetchWordOperand(vector);
 	}
 
 	static bool pending()
@@ -92,19 +97,20 @@ namespace interrupt
 		return pendingIRQs.any();
 	}
 
-	bool pending(const IRQ type)
+	bool pending(const IRQTYPE type)
 	{
-		vassert(type != IRQ::NONE);
+		vassert(type != IRQTYPE::NONE);
 		return pendingIRQs[type];
 	}
 
-	// return current highest-priority IRQ
-	static IRQ current()
+	// return current highest-priority IRQTYPE
+	static IRQTYPE current()
 	{
-		if (pendingIRQs[IRQ::RST]) return IRQ::RST;
-		if (pendingIRQs[IRQ::NMI]) return IRQ::NMI;
-		if (pendingIRQs[IRQ::BRK]) return IRQ::BRK;
-		return IRQ::NONE;
+		if (pendingIRQs[IRQTYPE::RST]) return IRQTYPE::RST;
+		if (pendingIRQs[IRQTYPE::NMI]) return IRQTYPE::NMI;
+		if (pendingIRQs[IRQTYPE::IRQ]) return IRQTYPE::IRQ;
+		if (pendingIRQs[IRQTYPE::BRK]) return IRQTYPE::BRK;
+		return IRQTYPE::NONE;
 	}
 }
 
@@ -179,6 +185,35 @@ namespace stack
 	}
 }
 
+namespace status
+{
+	template <class T,int bits>
+	static inline void setZ(const bit_field<T,bits>& result)
+	{
+		P.change<F_ZERO>(result.zero());
+	}
+
+	template <class T,int bits>
+	static inline void setN(const bit_field<T,bits>& result)
+	{
+		P.change<F_NEGATIVE>(result.negative());
+	}
+
+	template <class T,int bits>
+	static inline void setNZ(const bit_field<T,bits>& result)
+	{
+		P.change<F_NEGATIVE>(result.negative());
+		P.change<F_ZERO>(result.zero());
+	}
+
+	template <class T,int bits>
+	static inline void setNV(const bit_field<T,bits>& result)
+	{
+		STATIC_ASSERT((int)F_NEGATIVE == 1<<7 && (int)F_OVERFLOW == 1<<6);
+		P.copy<F__NV, 6, 2>(result);
+	}
+}
+
 namespace bitshift
 {
 	template <class T,int bits>
@@ -217,32 +252,60 @@ namespace bitshift
 	}
 }
 
-namespace status
+namespace arithmetic
 {
-	template <class T,int bits>
-	static inline void setZ(const bit_field<T,bits>& result)
+	static void ADC()
 	{
-		P.change<F_ZERO>(result.zero());
+		// Add with carry. A <- [A]+[M]+C
+		if (!P[F_BCD])
+		{
+			// binary addition
+			temp=A+value+(P[F_CARRY]?1:0);
+			P.change<F_OVERFLOW>(!((A^value)&0x80) && ((A^temp)&0x80));
+			P.change<F_CARRY>(SUM.overflow());
+		}else
+		{
+			// bcd addition
+			assert((A&0xF)<=9 && (A>>4)<=9);
+			assert((value&0xF)<=9 && (value>>4)<=9);
+			// add CF
+			temp=A+(P[F_CARRY]?1:0);
+
+			// add low digit
+			if ((temp&0xF)+(value&0xF)>9)
+			{
+				temp+=(value&0xF)+6;
+				P|=F_CARRY;
+			}else
+			{
+				temp+=(value&0xF);
+				P-=F_CARRY;
+			}
+			if ((temp>>4)+(value>>4)>9)
+			{
+				temp+=(value&0xF0)+6;
+				P|=F_OVERFLOW;
+				P|=F_CARRY;
+			}else
+			{
+				temp+=(value&0xF0);
+				P-=F_OVERFLOW;
+			}
+		}
+		status::setNZ(regA(temp));
 	}
 
-	template <class T,int bits>
-	static inline void setN(const bit_field<T,bits>& result)
+	static void SBC()
 	{
-		P.change<F_NEGATIVE>(result.negative());
-	}
+		// don't support bcd subtraction
+		assert(!P[F_BCD]);
 
-	template <class T,int bits>
-	static inline void setNZ(const bit_field<T,bits>& result)
-	{
-		P.change<F_NEGATIVE>(result.negative());
-		P.change<F_ZERO>(result.zero());
-	}
+		temp=A-value-(P[F_CARRY]?0:1);
 
-	template <class T,int bits>
-	static inline void setNV(const bit_field<T,bits>& result)
-	{
-		STATIC_ASSERT((int)F_NEGATIVE == 1<<7 && (int)F_OVERFLOW == 1<<6);
-		P.copy<F__NV, 6, 2>(result);
+		P.change<F_CARRY>(!SUM.overflow());
+		P.change<F_OVERFLOW>(((A^value)&0x80) && ((A^temp)&0x80));
+
+		status::setNZ(regA(temp));
 	}
 }
 
@@ -258,7 +321,6 @@ namespace cpu
 		// reset status register
 		P.clearAll();
 		P.set(F_RESERVED);
-		P.set(F_ZERO);
 
 		// reset stack pointer
 		stack::reset();
@@ -266,11 +328,16 @@ namespace cpu
 		// clear IRQ state
 		interrupt::clearAll();
 		// set PC to the entry point
-		interrupt::request(IRQ::RST);
+		interrupt::request(IRQTYPE::RST);
 	}
 
-	void start()
+	// emulate n instructions
+	void start(int n)
 	{
+		while (n<0 || n--)
+		{
+			if (nextInstruction()<0) break;
+		}
 	}
 
 	static int readEffectiveAddress(const opcode_t code, const M6502_OPCODE op)
@@ -280,14 +347,17 @@ namespace cpu
 		invalidate(EA);
 		invalidate(M);
 
+		maddr8_t addr8;
+
 		switch (op.addrmode)
 		{
 		case ADR_IMP: // Ignore. Address is implied in instruction.
 			break;
 
 		case ADR_ZP: // Zero Page mode. Use the address given after the opcode, but without high byte.
-			addr=mmc::fetchByteOperand(PC);
-			value=mmc::read(addr);
+			addr8=mmc::fetchByteOperand(PC);
+			addr=addr8;
+			value=mmc::loadZPByte(addr8);
 			break;
 
 		case ADR_REL: // Relative mode.
@@ -309,16 +379,18 @@ namespace cpu
 			// Zero Page Indexed mode, X as index. Use the address given
 			// after the opcode, then add the
 			// X register to it to get the final address.
-			addr=mmc::fetchByteOperand(PC).plus(X);
-			value=mmc::read(addr);
+			addr8=mmc::fetchByteOperand(PC).plus(X);
+			addr=addr8;
+			value=mmc::loadZPByte(addr8);
 			break;
 
 		case ADR_ZPY:
 			// Zero Page Indexed mode, Y as index. Use the address given
 			// after the opcode, then add the
 			// Y register to it to get the final address.
-			addr=mmc::fetchByteOperand(PC).plus(Y);
-			value=mmc::read(addr);
+			addr8=mmc::fetchByteOperand(PC).plus(Y);
+			addr=addr8;
+			value=mmc::loadZPByte(addr8);
 			break;
 
 		case ADR_ABSX:
@@ -340,8 +412,8 @@ namespace cpu
 			break;
 
 		case ADR_INDX:
-			addr=mmc::fetchByteOperand(PC).plus(X);
-			addr=mmc::loadZPWord(maddr8_t(addr));
+			addr8=mmc::fetchByteOperand(PC).plus(X);
+			addr=mmc::loadZPWord(addr8);
 			value=mmc::read(addr);
 			break;
 
@@ -375,9 +447,23 @@ namespace cpu
 		// poll interrupts
 		if (interrupt::pending())
 		{
-			IRQ irq = interrupt::current();
-			if (irq != IRQ::BRK || !P[F_INTERRUPT_OFF])
+			IRQTYPE irq = interrupt::current();
+			if (irq != IRQTYPE::IRQ || !P[F_INTERRUPT_OFF])
 			{
+				// process IRQ
+				stack::pushPC();
+				if (irq != IRQTYPE::RST)
+				{
+					// set or clear Break flag depending on irq type
+					if (irq == IRQTYPE::BRK)
+						P|=F_BREAK;
+					else
+						P-=F_BREAK;
+					// push status
+					stack::pushReg(P);
+					// disable other interrupts
+					P|=F_INTERRUPT_OFF;
+				}
 				// jump to interrupt handler
 				PC = interrupt::handler(irq);
 				interrupt::clear(irq);
@@ -385,6 +471,12 @@ namespace cpu
 		}
 
 		// step1: fetch instruction
+		if (PC.zero())
+		{
+			// program terminates
+			return -1;
+		}
+
 		const maddr_t opaddr = PC;
 		const opcode_t opcode = mmc::fetchOpcode(PC);
 
@@ -399,9 +491,296 @@ namespace cpu
 		debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
 
 		// step4: execution
-		_alutemp_t temp;
+		bool writeBack = false;
+		switch (op.inst)
+		{
+		// arithmetic
+		case INS_ADC: // Add with carry.
+			arithmetic::ADC();
+			break;
+
+		case INS_SBC: // Subtract
+			arithmetic::SBC();
+			break;
+			
+		case INS_INC: // Increment memory by one
+			inc(M);
+			status::setNZ(M);
+			writeBack = true;
+			break;
+
+		case INS_DEC: // Decrement memory by one
+			dec(M);
+			status::setNZ(M);
+			writeBack = true;
+			break;
+
+		case INS_DEX: // Decrement index X by one
+			dec(regX);
+			status::setNZ(regX);
+			break;
+
+		case INS_DEY: // Decrement index Y by one
+			dec(regY);
+			status::setNZ(regY);
+			break;
+
+		case INS_INX: // Increment index X by one
+			inc(regX);
+			status::setNZ(regX);
+			break;
+
+		case INS_INY: // Increment index Y by one
+			inc(regY);
+			status::setNZ(regY);
+			break;
+
+		// bit manipulation
+		case INS_AND: // AND memory with accumulator.
+			status::setNZ(regA&=M);
+			break;
+
+		case INS_ASLA: // Shift left one bit
+			bitshift::ASL(regA);
+			break;
+
+		case INS_ASL:
+			bitshift::ASL(M);
+			writeBack = true;
+			break;
+
+		case INS_EOR: // XOR Memory with accumulator, store in accumulator
+			status::setNZ(regA^=M);
+			break;
+
+		case INS_LSR: // Shift right one bit
+			bitshift::LSR(M);
+			writeBack = true;
+			break;
+
+		case INS_LSRA:
+			bitshift::LSR(regA);
+			break;
+
+		case INS_ORA: // OR memory with accumulator, store in accumulator.
+			status::setNZ(regA|=M);
+			break;
+
+		case INS_ROL: // Rotate one bit left
+			bitshift::ROL(M);
+			writeBack = true;
+			break;
+
+		case INS_ROLA:
+			bitshift::ROL(regA);
+			break;
+
+		case INS_ROR: // Rotate one bit right
+			bitshift::ROR(M);
+			writeBack = true;
+			break;
+
+		case INS_RORA:
+			bitshift::ROR(regA);
+			break;
+
+		// branch
+		case INS_JMP: // Jump to new location
+			PC=addr;
+			break;
+
+		case INS_JSR: // Jump to new location, saving return address. Push return address on stack
+			dec(PC);
+			stack::pushPC();
+			PC=addr;
+			break;
+		
+		case INS_RTS: // Return from subroutine. Pull PC from stack.
+			PC=stack::popWord();
+			inc(PC);
+			break;
+
+		case INS_BCC: // Branch on carry clear
+			if (!P[F_CARRY])
+			{
+jBranch:
+				cycles+=((valueOf(opaddr)^valueOf(addr))&0xFF00)?2:1;
+				PC=addr;
+			}
+			break;
+
+		case INS_BCS: // Branch on carry set
+			if (P[F_CARRY]) goto jBranch;else break;
+		case INS_BEQ: // Branch on zero
+			if (P[F_ZERO]) goto jBranch;else break;
+		case INS_BMI: // Branch on negative result
+			if (P[F_SIGN]) goto jBranch;else break;
+		case INS_BNE: // Branch on not zero
+			if (!P[F_ZERO]) goto jBranch;else break;
+		case INS_BPL: // Branch on positive result
+			if (!P[F_SIGN]) goto jBranch;else break;
+		case INS_BVC: // Branch on overflow clear
+			if (!P[F_OVERFLOW]) goto jBranch;else break;
+		case INS_BVS: // Branch on overflow set
+			if (P[F_OVERFLOW]) goto jBranch;else break;
+
+		// interrupt
+		case INS_BRK: // Break
+			inc(PC);
+			interrupt::request(IRQTYPE::BRK);
+			break;
+
+		case INS_RTI: // Return from interrupt. Pull status and PC from stack.
+			P.asBitField()=stack::popByte();
+			P|=F_RESERVED;
+			PC=stack::popWord();
+			break;
+
+		// set/clear flag
+		case INS_CLC: // Clear carry flag
+			P.clear(F_CARRY);
+			break;
+		case INS_CLD: // Clear decimal flag
+			P.clear(F_DECIMAL);
+			break;
+		case INS_CLI: // Clear interrupt flag
+			P.clear(F_INTERRUPT_OFF);
+			break;
+		case INS_CLV: // Clear overflow flag
+			P.clear(F_OVERFLOW);
+			break;
+		case INS_SEC: // Set carry flag
+			P.set(F_CARRY);
+			break;
+		case INS_SED: // Set decimal flag
+			P.set(F_DECIMAL);
+			break;
+		case INS_SEI: // Set interrupt disable status
+			P.set(F_INTERRUPT_OFF);
+			break;
+
+		// compare
+		case INS_BIT:
+			status::setNV(M);
+			status::setZ(M&=A);
+			break;
+
+		case INS_CMP: // Compare memory and accumulator
+		case INS_CPX: // Compare memory and index X
+		case INS_CPY: // Compare memory and index Y
+			switch (op.inst)
+			{
+			case INS_CMP:
+				temp=A;break;
+			case INS_CPX:
+				temp=X;break;
+			case INS_CPY:
+				temp=Y;break;
+			default:
+				break;
+			}
+			temp=temp+0x100-value;
+			// if (temp>0xFF) [R]-[M]>=0 C=1;
+			P.change<F_CARRY>(SUM.overflow());
+			temp=(temp-0x100)&0xFF;
+			status::setNZ(SUM);
+			break;
+
+		// load/store
+		case INS_LDA: // Load accumulator with memory
+			status::setNZ(M);
+			A=value;
+			break;
+
+		case INS_LDX: // Load index X with memory
+			status::setNZ(M);
+			X=value;
+			break;
+
+		case INS_LDY: // Load index Y with memory
+			status::setNZ(M);
+			Y=value;
+			break;
+
+		case INS_STA: // Store accumulator in memory
+			value = A;
+			writeBack = true;
+			break;
+		case INS_STX: // Store index X in memory
+			value = X;
+			writeBack = true;
+			break;
+		case INS_STY: // Store index Y in memory
+			value = Y;
+			writeBack = true;
+			break;
+
+		// stack
+		case INS_PHA: // Push accumulator on stack
+			stack::pushReg(regA);
+			break;
+
+		case INS_PHP: // Push processor status on stack
+			stack::pushReg(P);
+			break;
+
+		case INS_PLA: // Pull accumulator from stack
+			A=stack::popByte();
+			status::setNZ(regA);
+			break;
+
+		case INS_PLP: // Pull processor status from stack
+			P.asBitField()=stack::popByte();
+			P|=F_RESERVED;
+			break;
+		
+		// transfer
+		case INS_TAX: // Transfer accumulator to index X
+			X=A;
+			status::setNZ(regX);
+			break;
+		case INS_TAY: // Transfer accumulator to index Y
+			Y=A;
+			status::setNZ(regY);
+			break;
+		case INS_TSX: // Transfer stack pointer to index X
+			X=valueOf(SP);
+			status::setNZ(regX);
+			break;
+		case INS_TXA: // Transfer index X to accumulator
+			A=X;
+			status::setNZ(regA);
+			break;
+		case INS_TXS: // Transfer index X to stack pointer
+			SP=X;
+			break;
+		case INS_TYA: // Transfer index Y to accumulator
+			A=Y;
+			status::setNZ(regA);
+			break;
+
+		// other
+		case INS_NOP: break; // No OPeration
+
+		// unofficial
+
+		default:
+			printf("[CPU] Game crashed, invalid opcode at address $%04X\n",valueOf(opaddr));
+			break;
+		}
+
+		// step5: write back
+		if (writeBack)
+		{
+			assert(addr != 0xCCCC);
+			mmc::write(addr, value);
+		}
+
+		cycles+=op.cycles;
+		// end of instruction pipeline
 
 		assert(P[F_RESERVED]);
+		debug::printCPUState(PC, A, X ,Y, valueOf(P), SP, cycles);
 
 		// update statistics
 		STAT_ADD(totInstructions, 1);

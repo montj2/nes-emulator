@@ -9,6 +9,7 @@
 #include "unittest/framework.h"
 
 #include "nes/internals.h"
+#include "nes/debug.h"
 #include "nes/rom.h"
 #include "nes/opcodes.h"
 #include "nes/mmc.h"
@@ -51,11 +52,14 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 			// setup cpu
 			cpu::reset();
 
+			// create log file
+			FILE *fp = fopen("log.txt", "wt");
+			debug::setOutputFile(fp);
+
 			// start execution
-			for (int i=1;i<=100;i++)
-			{
-				cpu::nextInstruction();
-			}
+			cpu::start(-1);
+
+			fclose(fp);
 		}else
 		{
 			puts("[X] Unable to load the rom.");

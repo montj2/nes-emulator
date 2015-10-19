@@ -61,36 +61,40 @@ namespace mmc
 
 	opcode_t fetchOpcode(maddr_t& pc)
 	{
+		opcode_t opcode;
 #ifdef WANT_MEM_PROTECTION
 		// check if address in code section [$8000, $FFFF]
-		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(pc));
+		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "PC", valueOf(pc));
+		opcode = ram.bank8[pc^0x8000];
+#else
+		WARN_IF(!MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "PC", valueOf(pc));
+		opcode = ram.data(pc);
 #endif
-		const opcode_t opcode = ram.bank8[pc^0x8000];
 		inc(pc);
 		return opcode;
 	}
 
 	operandb_t fetchByteOperand(maddr_t& pc)
 	{
-#ifdef WANT_MEM_PROTECTION
-		// check if address in code section [$8000, $FFFF]
-		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(pc));
-#endif
 		operandb_t operand;
+#ifdef WANT_MEM_PROTECTION
 		operand(ram.bank8[pc^0x8000]);
+#else
+		operand(ram.data(pc));
+#endif
 		inc(pc);
 		return operand;
 	}
 
 	operandw_t fetchWordOperand(maddr_t& pc)
 	{
-#ifdef WANT_MEM_PROTECTION
-		// check if address in code section [$8000, $FFFF]
-		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "addr", valueOf(pc));
-#endif
-		FATAL_ERROR_IF(pc.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
 		operandw_t operand;
+		FATAL_ERROR_IF(pc.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
+#ifdef WANT_MEM_PROTECTION
 		operand(*(uint16_t*)&ram.bank8[pc^0x8000]);
+#else
+		operand(makeWord(ram.data(pc), ram.data(pc+1)));
+#endif
 		pc+=2;
 		return operand;
 	}
