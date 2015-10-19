@@ -25,7 +25,7 @@ static maddr_t		addr; // effective address
 static byte_t		value; // operand
 static _alutemp_t	temp;
 
-// alias with wrapping for register file
+// alias of registers with wrapping
 typedef bit_field<_reg8_t, 8> reg_bit_field_t;
 #define regA fast_cast(A, reg_bit_field_t)
 #define regX fast_cast(X, reg_bit_field_t)
@@ -103,7 +103,7 @@ namespace interrupt
 		return pendingIRQs[type];
 	}
 
-	// return current highest-priority IRQTYPE
+	// return the highest-priority IRQ that is currently pending
 	static IRQTYPE current()
 	{
 		if (pendingIRQs[IRQTYPE::RST]) return IRQTYPE::RST;
@@ -317,6 +317,7 @@ namespace cpu
 		A=0;
 		X=0;
 		Y=0;
+		PC=0;
 
 		// reset status register
 		P.clearAll();
@@ -440,11 +441,8 @@ namespace cpu
 		return cycles;
 	}
 
-	int nextInstruction()
+	static void pollInterrupts()
 	{
-		int cycles=0;
-
-		// poll interrupts
 		if (interrupt::pending())
 		{
 			IRQTYPE irq = interrupt::current();
@@ -469,29 +467,11 @@ namespace cpu
 				interrupt::clear(irq);
 			}
 		}
+	}
 
-		// step1: fetch instruction
-		if (PC.zero())
-		{
-			// program terminates
-			return -1;
-		}
-
-		const maddr_t opaddr = PC;
-		const opcode_t opcode = mmc::fetchOpcode(PC);
-
-		// step2: decode
-		const M6502_OPCODE op = opcode::decode(opcode);
-		ERROR_UNLESS(opcode::usual(opcode), INVALID_INSTRUCTION, INVALID_OPCODE, "opcode", opcode, "instruction", op.inst);
-
-		// step3: read effective address & operands
-		cycles += readEffectiveAddress(opcode, op);
-		assert((valueOf(PC)-valueOf(opaddr)) == op.size);
-
-		debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
-
-		// step4: execution
-		bool writeBack = false;
+	static bool execInstruction(const M6502_OPCODE op, bool& writeBack, int& cycles)
+	{
+		writeBack = false;
 		switch (op.inst)
 		{
 		// arithmetic
@@ -604,7 +584,7 @@ namespace cpu
 			if (!P[F_CARRY])
 			{
 jBranch:
-				cycles+=((valueOf(opaddr)^valueOf(addr))&0xFF00)?2:1;
+				cycles+=((valueOf(PC)^valueOf(addr))&0xFF00)?2:1;
 				PC=addr;
 			}
 			break;
@@ -765,11 +745,50 @@ jBranch:
 		// unofficial
 
 		default:
-			printf("[CPU] Game crashed, invalid opcode at address $%04X\n",valueOf(opaddr));
-			break;
+			return false;
+		}
+		// success
+		return true;
+	}
+
+	int nextInstruction()
+	{
+		int cycles=0;
+
+		// handle interrupt request
+		pollInterrupts();
+
+		// step1: fetch instruction
+		if (PC.zero())
+		{
+			// program terminates
+			assert(SP.reachMax());
+			return -1;
 		}
 
-		// step5: write back
+		const maddr_t opaddr = PC;
+		const opcode_t opcode = mmc::fetchOpcode(PC);
+
+		// step2: decode
+		const M6502_OPCODE op = opcode::decode(opcode);
+		ERROR_UNLESS(opcode::usual(opcode), INVALID_INSTRUCTION, INVALID_OPCODE, "opcode", opcode, "instruction", op.inst);
+
+		// step3: read effective address & operands
+		cycles += readEffectiveAddress(opcode, op);
+		assert((valueOf(PC)-valueOf(opaddr)) == op.size);
+
+		debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
+
+		// step4: execute
+		bool writeBack = false;
+		if (!execInstruction(op, writeBack, cycles))
+		{
+			// execution failed
+			FATAL_ERROR(INVALID_INSTRUCTION, INVALID_OPCODE, "opcode", opcode, "instruction", op.inst);
+			return -1;
+		}
+
+		// step5: write back (when needed)
 		if (writeBack)
 		{
 			assert(addr != 0xCCCC);
@@ -811,9 +830,6 @@ public:
 		X=0xFF;
 		status::setNZ(regX);
 		tassert(!P[F_ZERO] && P[F_NEGATIVE]);
-
-		byte_t value;
-		_alutemp_t temp;
 
 		value=0x10;
 		temp=value<<4;
@@ -889,7 +905,7 @@ public:
 		tmp=stack::popByte();
 		tassert(tmp==0xFF);
 
-		printf("[ ] Register memory at 0x%p\n", &A);
+		printf("[ ] Register memory from %p to %p\n", &A, &temp+1);
 
 		return SUCCESS;
 	}
