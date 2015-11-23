@@ -37,6 +37,7 @@ typedef bit_field<_addr8_t,8> maddr8_t, saddr_t;
 
 // cpu
 typedef byte_t opcode_t;
+typedef byte_t operand_t;
 
 // alu
 typedef bit_field<byte_t,8> operandb_t;

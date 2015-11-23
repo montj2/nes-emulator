@@ -45,75 +45,6 @@ typedef bit_field<_reg8_t, 8> reg_bit_field_t;
 	#define STAT_ADD(VAR, INC) (void)0
 #endif
 
-namespace interrupt
-{
-	static const maddr_t VECTOR_NMI(0xFFFA);
-	static const maddr_t VECTOR_RESET(0xFFFC);
-	static const maddr_t VECTOR_IRQ(0xFFFE);
-
-	static flag_set<_reg8_t, IRQTYPE, 8> pendingIRQs;
-
-	static void clearAll()
-	{
-		pendingIRQs.clearAll();
-	}
-
-	static void clear(IRQTYPE type)
-	{
-		assert(pendingIRQs[type]);
-		pendingIRQs.clear(type);
-	}
-
-	void request(const IRQTYPE type)
-	{
-		vassert(type != IRQTYPE::NONE);
-		ERROR_IF(pendingIRQs[type], ILLEGAL_OPERATION, IRQ_ALREADY_PENDING);
-
-		pendingIRQs.set(type);
-		STAT_ADD(totInterrupts, 1);
-	}
-
-	// return address of interrupt handler
-	static maddr_t handler(const IRQTYPE type)
-	{
-		vassert(type != IRQTYPE::NONE);
-
-		maddr_t vector;
-		switch (type)
-		{
-		case IRQTYPE::RST: vector=VECTOR_RESET; break;
-		case IRQTYPE::NMI: vector=VECTOR_NMI; break;
-
-		case IRQTYPE::IRQ:
-		case IRQTYPE::BRK:
-			vector=VECTOR_IRQ;
-			break;
-		}
-		return mmc::fetchWordOperand(vector);
-	}
-
-	static bool pending()
-	{
-		return pendingIRQs.any();
-	}
-
-	bool pending(const IRQTYPE type)
-	{
-		vassert(type != IRQTYPE::NONE);
-		return pendingIRQs[type];
-	}
-
-	// return the highest-priority IRQ that is currently pending
-	static IRQTYPE current()
-	{
-		if (pendingIRQs[IRQTYPE::RST]) return IRQTYPE::RST;
-		if (pendingIRQs[IRQTYPE::NMI]) return IRQTYPE::NMI;
-		if (pendingIRQs[IRQTYPE::IRQ]) return IRQTYPE::IRQ;
-		if (pendingIRQs[IRQTYPE::BRK]) return IRQTYPE::BRK;
-		return IRQTYPE::NONE;
-	}
-}
-
 namespace stack
 {
 	static inline void pushByte(const byte_t byte)
@@ -211,6 +142,103 @@ namespace status
 	{
 		STATIC_ASSERT((int)F_NEGATIVE == 1<<7 && (int)F_OVERFLOW == 1<<6);
 		P.copy<F__NV, 6, 2>(result);
+	}
+}
+
+namespace interrupt
+{
+	static const maddr_t VECTOR_NMI(0xFFFA);
+	static const maddr_t VECTOR_RESET(0xFFFC);
+	static const maddr_t VECTOR_IRQ(0xFFFE);
+
+	static flag_set<_reg8_t, IRQTYPE, 8> pendingIRQs;
+
+	static void clearAll()
+	{
+		pendingIRQs.clearAll();
+	}
+
+	static void clear(IRQTYPE type)
+	{
+		assert(pendingIRQs[type]);
+		pendingIRQs.clear(type);
+	}
+
+	void request(const IRQTYPE type)
+	{
+		vassert(type != IRQTYPE::NONE);
+		ERROR_IF(pendingIRQs[type], ILLEGAL_OPERATION, IRQ_ALREADY_PENDING);
+
+		pendingIRQs.set(type);
+		STAT_ADD(totInterrupts, 1);
+	}
+
+	// return address of interrupt handler
+	static maddr_t handler(const IRQTYPE type)
+	{
+		vassert(type != IRQTYPE::NONE);
+
+		maddr_t vector;
+		switch (type)
+		{
+		case IRQTYPE::RST: vector=VECTOR_RESET; break;
+		case IRQTYPE::NMI: vector=VECTOR_NMI; break;
+
+		case IRQTYPE::IRQ:
+		case IRQTYPE::BRK:
+			vector=VECTOR_IRQ;
+			break;
+		}
+		return mmc::fetchWordOperand(vector);
+	}
+
+	static bool pending()
+	{
+		return pendingIRQs.any();
+	}
+
+	bool pending(const IRQTYPE type)
+	{
+		vassert(type != IRQTYPE::NONE);
+		return pendingIRQs[type];
+	}
+
+	// return the highest-priority IRQ that is currently pending
+	static IRQTYPE current()
+	{
+		if (pendingIRQs[IRQTYPE::RST]) return IRQTYPE::RST;
+		if (pendingIRQs[IRQTYPE::NMI]) return IRQTYPE::NMI;
+		if (pendingIRQs[IRQTYPE::IRQ]) return IRQTYPE::IRQ;
+		if (pendingIRQs[IRQTYPE::BRK]) return IRQTYPE::BRK;
+		return IRQTYPE::NONE;
+	}
+
+	static void poll()
+	{
+		if (pending())
+		{
+			IRQTYPE irq = current();
+			if (irq != IRQTYPE::IRQ || !P[F_INTERRUPT_OFF])
+			{
+				// process IRQ
+				stack::pushPC();
+				if (irq != IRQTYPE::RST)
+				{
+					// set or clear Break flag depending on irq type
+					if (irq == IRQTYPE::BRK)
+						P|=F_BREAK;
+					else
+						P-=F_BREAK;
+					// push status
+					stack::pushReg(P);
+					// disable other interrupts
+					P|=F_INTERRUPT_OFF;
+				}
+				// jump to interrupt handler
+				PC = handler(irq);
+				clear(irq);
+			}
+		}
 	}
 }
 
@@ -322,6 +350,7 @@ namespace cpu
 		// reset status register
 		P.clearAll();
 		P.set(F_RESERVED);
+		P.set(F_INTERRUPT_OFF);
 
 		// reset stack pointer
 		stack::reset();
@@ -441,37 +470,8 @@ namespace cpu
 		return cycles;
 	}
 
-	static void pollInterrupts()
+	static bool execute(const M6502_OPCODE op, bool& writeBack, int& cycles)
 	{
-		if (interrupt::pending())
-		{
-			IRQTYPE irq = interrupt::current();
-			if (irq != IRQTYPE::IRQ || !P[F_INTERRUPT_OFF])
-			{
-				// process IRQ
-				stack::pushPC();
-				if (irq != IRQTYPE::RST)
-				{
-					// set or clear Break flag depending on irq type
-					if (irq == IRQTYPE::BRK)
-						P|=F_BREAK;
-					else
-						P-=F_BREAK;
-					// push status
-					stack::pushReg(P);
-					// disable other interrupts
-					P|=F_INTERRUPT_OFF;
-				}
-				// jump to interrupt handler
-				PC = interrupt::handler(irq);
-				interrupt::clear(irq);
-			}
-		}
-	}
-
-	static bool execInstruction(const M6502_OPCODE op, bool& writeBack, int& cycles)
-	{
-		writeBack = false;
 		switch (op.inst)
 		{
 		// arithmetic
@@ -756,7 +756,7 @@ jBranch:
 		int cycles=0;
 
 		// handle interrupt request
-		pollInterrupts();
+		interrupt::poll();
 
 		// step1: fetch instruction
 		if (PC.zero())
@@ -781,7 +781,7 @@ jBranch:
 
 		// step4: execute
 		bool writeBack = false;
-		if (!execInstruction(op, writeBack, cycles))
+		if (!execute(op, writeBack, cycles))
 		{
 			// execution failed
 			FATAL_ERROR(INVALID_INSTRUCTION, INVALID_OPCODE, "opcode", opcode, "instruction", op.inst);

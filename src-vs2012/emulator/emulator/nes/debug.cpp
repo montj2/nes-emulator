@@ -13,7 +13,7 @@ static FILE* foutput = stdout;
 
 namespace debug
 {
-	void printDisassembly(const maddr_t pc, const opcode_t opcode, const _reg8_t rx, const _reg8_t ry, const maddr_t addr, const byte_t operand)
+	void printDisassembly(const maddr_t pc, const opcode_t opcode, const _reg8_t rx, const _reg8_t ry, const maddr_t addr, const operand_t operand)
 	{
 		const M6502_OPCODE op = opcode::decode(opcode);
 		switch (op.size)
@@ -149,7 +149,7 @@ namespace debug
 	{
 		va_list args;
 		va_start(args, line_number);
-		wprintf(L"[X] Warning: \n");
+		wprintf(L"[!] Warning: \n");
 		printToConsole(type, errorTypeToString(type), stype, errorSTypeToString(stype), NULL, function_name, line_number, args);
 		va_end(args);
 	}

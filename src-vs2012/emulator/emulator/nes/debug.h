@@ -7,7 +7,7 @@ namespace debug
 	void error(EMUERROR, EMUERRORSUBTYPE, const wchar_t *, const wchar_t *, unsigned long, ...);
 	void fatalError(EMUERROR, EMUERRORSUBTYPE, const wchar_t *, const wchar_t *, unsigned long, ...);
 
-	void printDisassembly(const maddr_t pc, const opcode_t opcode, const _reg8_t rx, const _reg8_t ry, const maddr_t addr, const byte_t operand);
+	void printDisassembly(const maddr_t pc, const opcode_t opcode, const _reg8_t rx, const _reg8_t ry, const maddr_t addr, const operand_t operand);
 	void printCPUState(const maddr_t pc, const _reg8_t ra, const _reg8_t rx, const _reg8_t ry, const _reg8_t rp, const _reg8_t rsp, const int cyc);
 }
 
