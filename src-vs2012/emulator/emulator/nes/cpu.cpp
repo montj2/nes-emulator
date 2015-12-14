@@ -173,7 +173,7 @@ namespace interrupt
 		STAT_ADD(totInterrupts, 1);
 	}
 
-	// return address of interrupt handler
+	// get address of interrupt handler
 	static maddr_t handler(const IRQTYPE type)
 	{
 		vassert(type != IRQTYPE::NONE);

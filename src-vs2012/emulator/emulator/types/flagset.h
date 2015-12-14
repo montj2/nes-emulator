@@ -31,12 +31,12 @@ public:
 
 	bool test(const ET e) const
 	{
-		return (_value&e)==e;
+		return (_value&(T)e)==(T)e;
 	}
 
 	bool operator [](const ET e) const
 	{
-		vassert(SINGLE_BIT(e));
+		vassert(SINGLE_BIT((T)e));
 		return test(e);
 	}
 

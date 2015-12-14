@@ -34,7 +34,7 @@ public:
     };
 };
 
-// e.g. SIZE_IN_BITS(int)=32 TYPE_BITS(bool)=1
+// e.g. SIZE_IN_BITS(int) is 32 and SIZE_IN_BITS(bool) is 1
 #define SIZE_IN_BITS(TP) (__BITSOF_CLASS<TP>::NUM_BITS)
 
 // e.g. BIT_MASK(3)=7
@@ -82,5 +82,8 @@ inline T min(const T& x,const T& y) {return x<y?x:y;}
 
 template <typename T>
 inline T max(const T& x,const T& y) {return x>y?x:y;}
+
+template <typename T1, typename T2>
+inline size_t ptr_diff(const T1* x, const T2* y) {return reinterpret_cast<const volatile char*>(x)-reinterpret_cast<const volatile char*>(y);}
 
 #define CASE_ENUM_RETURN_STRING(ENUM) case ENUM: return L#ENUM

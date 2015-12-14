@@ -45,7 +45,7 @@
 
 #Visual Studio files
 *.[Oo]bj
-*.user
+#*.user
 *.aps
 *.pch
 *.vspscc
@@ -71,3 +71,7 @@ ipch/
 [Dd]ebug*/
 [Rr]elease*/
 Ankh.NoLoad
+
+#Emulator logs
+*.log
+*.txt

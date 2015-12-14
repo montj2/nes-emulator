@@ -15,7 +15,7 @@ enum PSW
 };
 
 // irq types
-enum IRQTYPE
+enum class IRQTYPE
 {
     NONE=0x0,
     NMI=0x1,

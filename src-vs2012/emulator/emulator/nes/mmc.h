@@ -35,18 +35,19 @@ public:
 	inline uint8_t& data(const size_t ptr)
 	{
 		vassert(ptr<0x800 || ptr>=0x6000);
-		return bank0[ptr];
+		return ((uint8_t*)this)[ptr];
 	}
 
 	inline uint8_t* page(const size_t num)
 	{
-		return &bank0[num<<8];
+		return &((uint8_t*)this)[num<<8];
 	}
 };
 
 extern struct NESRAM ram;
 #define ramSt ram.stack
 #define ram0p ram.zeropage
+#define ramData(offset) ram.data(offset)
 
 namespace mmc
 {
