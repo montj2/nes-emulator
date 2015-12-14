@@ -47,7 +47,7 @@ template <class TC> TestResult TestFramework::runTestCase()
 
 TestResult TestFramework::runTestCase(TestCase *obj)
 {
-	printf("[-] runTestCase: %s\n", obj->name());
+	printf("[+] runTestCase: %s\n", obj->name());
 	// get ready
 	puts("[ ] setting up...");
 	obj->setUp();
