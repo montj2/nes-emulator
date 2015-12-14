@@ -120,18 +120,19 @@ namespace mmc
 
 	byte_t read(const maddr_t addr)
 	{
+		byte_t ret=~0;
 		switch (addr>>13) // bank number/2
 		{
 		case 0: //[$0000,$2000)
 			return ram.bank0[addr&0x7FF];
 		case 1: //[$2000,$4000)
-			// TODO: read ppu register
+			if (ppu::readPort(addr, ret)) return ret;
 			break;
 		case 2: //[$4000,$6000)
 			// TODO: read IO register
 			break;
 		case 3:
-			return ram.bank6[addr&0x1FFFF];
+			return ram.bank6[addr&0x1FFF];
 		case 4:
 		case 5:
 		case 6:
@@ -139,7 +140,7 @@ namespace mmc
 			return ram.bank8[addr^0x8000];
 		}
 		ERROR(INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_READ, "addr", valueOf(addr));
-		return ~0;
+		return ret;
 	}
 
 	void write(const maddr_t addr, const byte_t value)
@@ -150,7 +151,7 @@ namespace mmc
 				ram.bank0[addr&0x7FF]=value;
 				return;
 			case 1: //[$2000,$4000) PPU Registers
-				// write to ppu register
+				if (ppu::writePort(addr, value)) return;
 				break;
 			case 3: //[$6000,$8000) SRAM
 				ram.bank6[addr&0x1FFF]=value;

@@ -150,6 +150,9 @@ namespace ppu
 	// global functions
 	void reset();
 
+	bool readPort(const maddr_t maddress, byte_t& data);
+	bool writePort(const maddr_t maddress, const byte_t data);
+
 	int currentScanline();
 	long long currentFrame();
 }

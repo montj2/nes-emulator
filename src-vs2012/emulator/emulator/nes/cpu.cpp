@@ -391,8 +391,7 @@ namespace cpu
 			break;
 
 		case ADR_REL: // Relative mode.
-			addr=(char)valueOf(mmc::fetchByteOperand(PC));
-			addr+=PC;
+			addr=PC+(char)valueOf(mmc::fetchByteOperand(PC));
 			break;
 
 		case ADR_ABS: // Absolute mode. Use the two bytes following the opcode as an address.
