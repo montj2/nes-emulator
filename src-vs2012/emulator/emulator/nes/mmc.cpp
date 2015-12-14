@@ -56,7 +56,7 @@ namespace mmc
 		// no prg-rom selected now
 		p8=pA=pC=pE=-1;
 
-		// flush memory
+		// clear memory
 		memset(&ram,0,sizeof(ram));
 	}
 
@@ -120,7 +120,7 @@ namespace mmc
 
 	byte_t read(const maddr_t addr)
 	{
-		byte_t ret=~0;
+		byte_t ret=INVALID;
 		switch (addr>>13) // bank number/2
 		{
 		case 0: //[$0000,$2000)

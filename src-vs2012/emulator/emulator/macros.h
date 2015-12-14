@@ -5,6 +5,8 @@
 
 #define NULL nullptr
 
+#define INVALID (~0)
+
 // static assertion
 #define STATIC_ASSERT(expr) sizeof(int[(bool)(expr)?1:-1])
 
@@ -54,6 +56,7 @@ public:
 #define UPDATE_FIELD(x, f, y) x=((x)&(~f))|(((y)*LOW_BIT(f))&(f))
 #define INC_FIELD(x, f) x=((x)&(~(f))) | ( (((x)&(f)) + LOW_BIT(f)) & (f) );
 
+// type casting
 template <typename destType, typename srcType>
 inline destType& safe_cast(srcType& source)
 {

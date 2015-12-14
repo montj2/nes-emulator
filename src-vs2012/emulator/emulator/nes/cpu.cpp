@@ -111,7 +111,7 @@ namespace stack
 		// move stack pointer to the top of the stack
 		SP.selfSetMax();
 
-		// flush stack
+		// clear stack
 		memset(ramSt, 0, sizeof(ramSt));
 	}
 }

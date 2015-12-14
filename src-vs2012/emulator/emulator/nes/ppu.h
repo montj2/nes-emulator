@@ -16,6 +16,12 @@ public:
 		vassert(index<64);
 		return sprites[index];
 	}
+
+	inline uint8_t& data(const size_t ptr)
+	{
+		vassert(ptr<0x100);
+		return ((uint8_t*)this)[ptr];
+	}
 };
 
 struct NESVRAM
@@ -86,6 +92,7 @@ extern struct NESOAM oam;
 #define vramNt(index) vram.nameTables[index].nameTable
 #define vramAt(index) vram.nameTables[index].attribTable
 #define vramData(offset) vram.data(offset)
+#define oamData(offset) oam.data(offset)
 
 #define sprAttr(index) oam.sprite(index)
 #define colorIdx(index) vram.colorIndex(index)
@@ -101,7 +108,7 @@ enum class PPUCTRL {
     NMI_ENABLED=0x80,
     MASTER_SLAVE=0x40,
     LARGE_SPRITE=0x20,
-    SCREEN_PATTERN=0x10,
+    BG_PATTERN=0x10,
     SPRITE_PATTERN=0x8,
     VERTICAL_WRITE=0x4,
     CURRENT_NT=0x3
