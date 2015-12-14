@@ -123,6 +123,12 @@ namespace rom
 		return mirroring;
 	}
 
+	void setMirrorMode(MIRRORING newMode)
+	{
+		// for test purpose only
+		mirroring = newMode;
+	}
+
 	const char* getImage()
 	{
 		return imageData;

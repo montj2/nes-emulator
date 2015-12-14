@@ -58,16 +58,14 @@ public:
 			colorindex_t sprites[0x10];
 		}colors;
 	}pal;
-
-	inline colorindex_t* palettes()
-	{
-		return &pal.colors.background[0];
-	}
 	
-	inline colorindex_t& colorIndex(const size_t index)
+	inline colorindex_t colorIndex(const size_t index)
 	{
 		vassert(index<32);
-		return palettes()[index];
+		if ((index&3)==0)
+			return pal.colors.background[0]; // due to palette mirroring and backdrop
+		else
+			return pal.colors.background[index];
 	}
 	
 private:
@@ -140,11 +138,18 @@ enum class PPUADDR {
     LOW_BYTE=0xFF,
 
     BANK=0x3000/*0xF000*/,
-    BANK_OFFSET=0x0FFF
+    BANK_OFFSET=0x0FFF,
+
+	PAL_SELECT=0x10,
+	PAL_NUM=0xC,
+	PAL_ITEM=0x3
 };
 
 namespace ppu
 {
 	// global functions
 	void reset();
+
+	int currentScanline();
+	long long currentFrame();
 }

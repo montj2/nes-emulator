@@ -143,9 +143,9 @@ public:
 		tassert(!P.any());
 
 		P.set(F_ZERO);
-		P-=F_BCD;
+		P-=F_BCD; 
 		tassert(valueOf(P)==F_ZERO);
-		P^=F_MULTIPLE;
+		P|=F_MULTIPLE;
 		tassert(valueOf(P)==(F_ZERO|F_MULTIPLE));
 		P^=F_ZERO;
 		tassert(valueOf(P)==F_MULTIPLE);

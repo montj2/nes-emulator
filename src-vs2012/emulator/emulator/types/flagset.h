@@ -16,12 +16,23 @@ public:
 	{
 		return *(bit_field<T,bits>*)this;
 	}
+	
+	// auto conversion is also fine
+	#ifndef DISABLE_FLAGSET_AUTO_UNBOXING
+		operator bit_field<T,bits>&() const {return *(bit_field<T,bits>*)this;}
+	#endif
 
 	// safe assignment
 	flag_set& operator =(const bit_field<T,bits>& rhs)
 	{
 		_value=valueOf(rhs);
 		return *this;
+	}
+
+	// safe auto boxing
+	flag_set(const bit_field<T,bits>& rhs):value_object(0)
+	{
+		_value=valueOf(rhs);
 	}
 
 	bool any() const
@@ -42,6 +53,7 @@ public:
 
 	void flip(const ET e)
 	{
+		vassert(SINGLE_BIT((T)e));
 		_value^=e;
 	}
 
@@ -97,12 +109,6 @@ public:
 		return SELECT_FIELD(_value, (T)e);
 	}
 
-	template <ET e>
-	T select() const
-	{
-		return SELECT_FIELD(_value, (T)e);
-	}
-
 	T operator ()(const ET e) const
 	{
 		return SELECT_FIELD(_value, (T)e);
@@ -117,7 +123,7 @@ public:
 	template <ET e>
 	void update(const T newValue)
 	{
-		assert(0==(newValue&(~RTRIM(field))));
+		assert(0==(newValue&(~RTRIM((T)e))));
 		UPDATE_FIELD(_value, (T)e, newValue);
 	}
 

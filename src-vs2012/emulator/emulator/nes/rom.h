@@ -1,9 +1,11 @@
 // rom config
 enum MIRRORING {
+	MIRROR_MIN=0,
     MIRROR_HORIZONTAL=0,
-    MIRROR_VERTICAL=1,
+    MIRROR_VERTICAL,
     MIRROR_FOURSCREEN,
     MIRROR_SINGLESCREEN,
+	MIRROR_MAX=MIRROR_SINGLESCREEN
 };
 
 enum ROMCONTROL1 {
@@ -27,6 +29,7 @@ namespace rom
 
 	int mapperType();
 	int mirrorMode();
+	void setMirrorMode(MIRRORING newMode);
 
 	const char* getImage();
 	const char* getVROM();
