@@ -7,6 +7,7 @@
 
 #include "internals.h"
 #include "debug.h"
+#include "ppu.h"
 #include "mmc.h"
 
 // NES main memory
