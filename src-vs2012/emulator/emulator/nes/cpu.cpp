@@ -325,7 +325,7 @@ namespace arithmetic
 
 	static void SBC()
 	{
-		// don't support bcd subtraction
+		// can't be used to subtract a bcd number
 		assert(!P[F_BCD]);
 
 		temp=A-value-(P[F_CARRY]?0:1);
@@ -355,9 +355,9 @@ namespace cpu
 		// reset stack pointer
 		stack::reset();
 
-		// clear IRQ state
+		// reset IRQ state
 		interrupt::clearAll();
-		// set PC to the entry point
+		// this will set PC to the entry point
 		interrupt::request(IRQTYPE::RST);
 	}
 

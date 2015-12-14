@@ -83,7 +83,7 @@ void TestFramework::runAll()
 	}
 	if (!ok)
 	{
-		puts("[+] not all unit tests passed. pls check.");
+		puts("[!] not all unit tests passed. pls check.");
 	}else
 	{
 		puts("[-] ALL TEST CASES PASSED!");
