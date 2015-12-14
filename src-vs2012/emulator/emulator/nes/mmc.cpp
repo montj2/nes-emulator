@@ -7,8 +7,8 @@
 
 #include "internals.h"
 #include "debug.h"
-#include "ppu.h"
 #include "mmc.h"
+#include "ppu.h"
 
 // NES main memory
 __declspec(align(0x1000))

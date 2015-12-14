@@ -48,11 +48,13 @@ private:
 	uint8_t __empty1[0xF00]; // mirrors of 0x2000-0x2eff
 
 public:
-	struct PALETTE_RAM
+	struct PALETTE_MEMORY
 	{
 		struct PALETTE_COLOR_INDEXES
 		{
-			colorindex_t background[0x10]; // D6 and D7 are ignored
+			// entry #0 is used as background color
+			// D6 and D7 of all entries are not used 
+			colorindex_t background[0x10];
 			colorindex_t sprites[0x10];
 		}colors;
 	}pal;
@@ -87,6 +89,62 @@ extern struct NESOAM oam;
 #define vramAt(index) vram.nameTables[index].attribTable
 #define vramData(offset) vram.data(offset)
 
-#define spr(index) oam.sprite(index)
+#define sprAttr(index) oam.sprite(index)
 #define colorIdx(index) vram.colorIndex(index)
-#define universalBackground colorIdx(0)
+
+enum class PPUSTATUS {
+    VBLANK=0x80,
+    HIT=0x40,
+    COUNTGT8=0x20,
+    WRITEIGNORED=0x10
+};
+
+enum class PPUCTRL {
+    NMI_ENABLED=0x80,
+    MASTER_SLAVE=0x40,
+    LARGE_SPRITE=0x20,
+    SCREEN_PATTERN=0x10,
+    SPRITE_PATTERN=0x8,
+    VERTICAL_WRITE=0x4,
+    CURRENT_NT=0x3
+};
+
+enum class PPUMASK {
+    EMPHASIS=0xE0,
+    INTENSITY=EMPHASIS,
+    EMPHASIS_RED=0x80,
+    EMPHASIS_GREEN=0x40,
+    EMPHASIS_BLUE=0x20,
+    SPR_VISIBLE=0x10,
+    BG_VISIBLE=0x8,
+    SPR_CLIP8=0x4,
+    BG_CLIP8=0x2,
+    MONOCHROME=0x1
+};
+
+enum class PPUADDR {
+    TILE_H=0x1F,
+    XSCROLL=TILE_H,
+    TILE_V=0x3E0,
+    YSCROLL=TILE_V,
+    NT_H=0x400,
+    HNT=NT_H,
+    NT_V=0x800,
+    VNT=NT_V,
+    NT=VNT|HNT,
+    NT_OFFSET=0x3FF,
+    FV=0x7000,
+    Y_OFFSET=FV,
+
+    HIGH_BYTE=0x7F00/*0x3F00*/,
+    LOW_BYTE=0xFF,
+
+    BANK=0x3000/*0xF000*/,
+    BANK_OFFSET=0x0FFF
+};
+
+namespace ppu
+{
+	// global functions
+	void reset();
+}

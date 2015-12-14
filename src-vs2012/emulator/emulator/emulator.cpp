@@ -14,6 +14,7 @@
 #include "nes/opcodes.h"
 #include "nes/mmc.h"
 #include "nes/cpu.h"
+#include "nes/ppu.h"
 
 static void welcome()
 {
@@ -51,6 +52,9 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 
 			// setup cpu
 			cpu::reset();
+
+			// setup ppu
+			ppu::reset();
 
 			// create log file
 			FILE *fp = fopen("log.txt", "wt");
