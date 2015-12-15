@@ -10,6 +10,8 @@
 #include "mmc.h"
 #include "ppu.h"
 
+#include "../ui.h"
+
 // NES main memory
 __declspec(align(0x1000))
 struct NESRAM ram;
@@ -129,7 +131,17 @@ namespace mmc
 			if (ppu::readPort(addr, ret)) return ret;
 			break;
 		case 2: //[$4000,$6000)
-			// TODO: read IO register
+			switch (valueOf(addr))
+			{
+			case 0x4015: // APU Register
+				return 0;
+			case 0x4016: // Controller Registers
+			case 0x4017:
+				if (ui::hasController((addr==0x4016)?1:0))
+					return ui::readController((addr==0x4016)?1:0)?1:0; // returns button state
+				else
+					return 0x2; // joystick not connected
+			}
 			break;
 		case 3:
 			return ram.bank6[addr&0x1FFF];
@@ -164,9 +176,23 @@ namespace mmc
 			case 2: //[$4000,$6000) Other Registers
 				switch (valueOf(addr))
 				{
+				// SPR-RAM DMA Pointer Register
 				case 0x4014:
 					ERROR_UNLESS(value<0x8, INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_COPIED, "page", value);
 					ppu::dma(ramPg(value));
+					return;
+				// Controller Registers 
+				case 0x4016:
+				case 0x4017:
+					if (!(value&1))
+					{
+						ui::resetController((valueOf(addr)==0x4017)?1:0);
+					}
+					return;
+				}
+				if (addr>=0x4000 && addr<=0x4017)
+				{
+					// APU Registers
 					return;
 				}
 				break;

@@ -72,7 +72,8 @@ namespace mem
 
 	static vaddr_t mirror(vaddr_flag_t vaddr, bool forRead=true)
 	{
-		switch (vaddr.select(PPUADDR::BANK)) {
+		switch (vaddr.select(PPUADDR::BANK))
+		{
 		case 0:
 		case 1: // [$0,$2000)
 			// no mirroring
@@ -281,10 +282,15 @@ namespace render
 		{
 			reloadVertical();
 		}
+		
+		ui::onFrameBegin();
 	}
 
 	static void endFrame()
 	{
+		++frameNum;
+
+		ui::onFrameEnd();
 	}
 
 	static bool HBlank()

@@ -31,6 +31,7 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 	usage(argv[0]);
 	TestFramework::instance().runAll();
 	emu::init();
+	ui::init();
 	if (argc>=2)
 	{
 		if (emu::load(argv[1]))
