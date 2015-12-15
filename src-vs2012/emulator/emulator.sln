@@ -1,16 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio Express 2012 for Windows Desktop
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "emulator", "emulator\emulator.vcxproj", "{B91451E4-A1DF-4B39-BD7F-83737F24A987}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
+		DebugTest|Win32 = DebugTest|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{B91451E4-A1DF-4B39-BD7F-83737F24A987}.Debug|Win32.ActiveCfg = Debug|Win32
 		{B91451E4-A1DF-4B39-BD7F-83737F24A987}.Debug|Win32.Build.0 = Debug|Win32
+		{B91451E4-A1DF-4B39-BD7F-83737F24A987}.DebugTest|Win32.ActiveCfg = DebugTest|Win32
+		{B91451E4-A1DF-4B39-BD7F-83737F24A987}.DebugTest|Win32.Build.0 = DebugTest|Win32
 		{B91451E4-A1DF-4B39-BD7F-83737F24A987}.Release|Win32.ActiveCfg = Release|Win32
 		{B91451E4-A1DF-4B39-BD7F-83737F24A987}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection

@@ -285,8 +285,12 @@ namespace arithmetic
 	static void ADC()
 	{
 		// Add with carry. A <- [A]+[M]+C
+#ifndef WANT_BCD_MODE
+		goto jBinaryMode;
+#endif
 		if (!P[F_BCD])
 		{
+jBinaryMode:
 			// binary addition
 			temp=A+value+(P[F_CARRY]?1:0);
 			P.change<F_OVERFLOW>(!((A^value)&0x80) && ((A^temp)&0x80));

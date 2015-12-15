@@ -327,11 +327,8 @@ namespace render
 					// Note: B0 indicates the color at the 7th pixel of the tile
 					const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
 					const byte_t color = colorD0D1|colorD2D3;
-					if (color!=0) // opaque
-					{
-						vassert(X-pixel>=0 && X-pixel<256);
-						vBuffer[scanline][X-pixel]=color;
-					}
+					vassert(X-pixel>=0 && X-pixel<256);
+					vBuffer[scanline][X-pixel]=color;
 				}
 			}
 
