@@ -232,18 +232,6 @@ namespace render
 		ui::blt32(vBuffer32, 256, 240);
 	}
 
-	static void beginScanline()
-	{
-		if (enabled())
-		{
-			reloadHorizontal();
-		}
-	}
-
-	static void endScanline()
-	{
-	}
-
 	static void startVBlank()
 	{
 		// present frame to screen
@@ -281,6 +269,7 @@ namespace render
 	{
 		if (enabled())
 		{
+			reloadHorizontal();
 			drawBackground();
 			drawSprites();
 		}
@@ -306,9 +295,7 @@ namespace render
 			beginFrame();
 		}else if (scanline>=0 && scanline<=239)
 		{
-			beginScanline();
 			renderScanline();
-			endScanline();
 		}else if (scanline==240)
 		{
 			startVBlank();

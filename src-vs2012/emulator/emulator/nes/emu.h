@@ -8,4 +8,5 @@ namespace emu
 	void setup();
 
 	bool nextFrame();
+	void run();
 }

@@ -59,4 +59,9 @@ namespace emu
 		}
 		return true;
 	}
+
+	void run()
+	{
+		while (nextFrame()) {}
+	}
 }

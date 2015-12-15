@@ -43,7 +43,7 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 			debug::setOutputFile(fp);
 
 			// start execution
-			emu::nextFrame();
+			emu::run();
 
 			fclose(fp);
 		}else

@@ -339,6 +339,8 @@ namespace arithmetic
 
 namespace cpu
 {
+	bool debugging = false;
+
 	void reset()
 	{
 		// reset general purpose registers
@@ -794,7 +796,10 @@ jBranch:
 		cycles += readEffectiveAddress(opcode, op, (op.inst==INS_STA || op.inst==INS_STX || op.inst==INS_STY));
 		assert((valueOf(PC)-valueOf(opaddr)) == op.size);
 
-		debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
+		if (debugging)
+		{
+			debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
+		}
 
 		// step4: execute
 		bool writeBack = false;
@@ -816,7 +821,10 @@ jBranch:
 		// end of instruction pipeline
 
 		assert(P[F_RESERVED]);
-		debug::printCPUState(PC, A, X ,Y, valueOf(P), SP, cycles);
+		if (debugging)
+		{
+			debug::printCPUState(PC, A, X ,Y, valueOf(P), SP, cycles);
+		}
 
 		// update statistics
 		STAT_ADD(totInstructions, 1);

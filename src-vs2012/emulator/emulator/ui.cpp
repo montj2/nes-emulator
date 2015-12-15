@@ -2,10 +2,6 @@
 
 // local header files
 #include "macros.h"
-#include "types/types.h"
-#include "unittest/framework.h"
-
-#include "nes/internals.h"
 
 #include "ui.h"
 
