@@ -24,19 +24,13 @@ enum class IRQTYPE
 	RST=0x8
 };
 
-namespace interrupt
-{
-	// global functions
-	void request(const IRQTYPE type);
-
-	bool pending(const IRQTYPE type);
-}
-
 namespace cpu
 {
 	// global functions
 	void reset();
-	void start(int n);
+
+	void irq(const IRQTYPE type);
 
 	int nextInstruction();
+	bool run(int n, long cycles);
 }

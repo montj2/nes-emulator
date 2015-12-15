@@ -10,8 +10,10 @@
 #include "rom.h"
 #include "cpu.h"
 #include "ppu.h"
+#include "../ui.h"
 
 // PPU Memory
+__declspec(align(0x1000))
 struct NESVRAM vram;
 struct NESOAM oam;
 
@@ -209,6 +211,123 @@ namespace render
 	{
 	}
 
+	static bool enabled()
+	{
+		return mask[PPUMASK::BG_VISIBLE] || mask[PPUMASK::SPR_VISIBLE];
+	}
+
+	static void present()
+	{
+		// cache palette colors
+		rgb32_t p32[32];
+		for (int i=0;i<32;i++) p32[i]=pal32[colorIdx(i)];
+
+		// look up each pixel
+		rgb32_t* vBuf32=vBuffer32;
+		const palindex_t* vBufIdx=&vBuffer[0][0];
+		for (int i=0;i<256*240;i++)
+			*vBuf32++=p32[valueOf(*vBufIdx++)];
+		
+		// display
+		ui::blt32(vBuffer32, 256, 240);
+	}
+
+	static void beginScanline()
+	{
+		if (enabled())
+		{
+			reloadHorizontal();
+		}
+	}
+
+	static void endScanline()
+	{
+	}
+
+	static void startVBlank()
+	{
+		// present frame to screen
+		present();
+		// set VBlank flag
+		status|=PPUSTATUS::VBLANK;
+		// do NMI
+		if (control[PPUCTRL::NMI_ENABLED])
+		{
+			cpu::irq(IRQTYPE::NMI);
+		}
+	}
+
+	static void duringVBlank()
+	{
+		// keep VBlank flag turned on
+		status|=PPUSTATUS::VBLANK;
+	}
+
+	static void endVBlank()
+	{
+		// clear VBlank flag
+		status-=PPUSTATUS::VBLANK;
+	}
+
+	static void drawBackground()
+	{
+	}
+
+	static void drawSprites()
+	{
+	}
+
+	static void renderScanline()
+	{
+		if (enabled())
+		{
+			drawBackground();
+			drawSprites();
+		}
+	}
+
+	static void beginFrame()
+	{
+		if (enabled())
+		{
+			reloadVertical();
+		}
+	}
+
+	static void endFrame()
+	{
+	}
+
+	static bool HBlank()
+	{
+		printf("[ ] ------ Scanline %d ------\n",scanline);
+		if (scanline==-1)
+		{
+			beginFrame();
+		}else if (scanline>=0 && scanline<=239)
+		{
+			beginScanline();
+			renderScanline();
+			endScanline();
+		}else if (scanline==240)
+		{
+			startVBlank();
+		}else if (scanline>=241 && scanline<=259)
+		{
+			duringVBlank();
+		}else if (scanline==260)
+		{
+			endVBlank();
+		}else if (scanline==261)
+		{
+			endFrame();
+			scanline=-1;
+			return false;
+		}
+		scanline++;
+		return true;
+	}
+
 	static void loadNTSCPal()
 	{
 		pal32[ 0] = Rgb32(117,117,117);
@@ -301,7 +420,7 @@ namespace ppu
 		// reset state
 		firstWrite = true;
 		latch = INVALID;
-		scanline = 0;
+		scanline = -1;
 		frameNum = 0;
 
 		// clear memory
@@ -378,8 +497,9 @@ namespace ppu
 		return false;
 	}
 
-	void hsync()
+	bool hsync()
 	{
+		return render::HBlank();
 	}
 
 	void dma(const uint8_t* src)
@@ -419,6 +539,7 @@ public:
 		tassert(sizeof(oam)==0x100);
 
 		printf("[ ] VRAM at 0x%p\n",&vram);
+		printf("[ ] SPR-RAM at 0x%p\n",&oam);
 		return SUCCESS;
 	}
 };

@@ -144,7 +144,7 @@ enum class PPUADDR {
 	FIRST_WRITE_HI=0x3000,
 	FIRST_WRITE_MID=0x0C00,
 	FIRST_WRITE_LO=0x0300,
-    HIGH_BYTE=0x3F00,
+    HIGH_BYTE=0x3F00/*0x7F00*/,
     LOW_BYTE=0xFF,
 
     BANK=0x3000/*0xF000*/,
@@ -165,6 +165,8 @@ namespace ppu
 	bool writePort(const maddr_t maddress, const byte_t data);
 
 	void dma(const uint8_t* src);
+
+	bool hsync();
 
 	int currentScanline();
 	long long currentFrame();

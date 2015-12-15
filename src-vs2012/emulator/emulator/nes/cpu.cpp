@@ -197,7 +197,7 @@ namespace interrupt
 		return pendingIRQs.any();
 	}
 
-	bool pending(const IRQTYPE type)
+	static bool pending(const IRQTYPE type)
 	{
 		vassert(type != IRQTYPE::NONE);
 		return pendingIRQs[type];
@@ -361,16 +361,26 @@ namespace cpu
 		interrupt::request(IRQTYPE::RST);
 	}
 
-	// emulate n instructions
-	void start(int n)
+	// emulate at most n instructions within specified cycles
+	bool run(int n, long cycles)
 	{
-		while (n<0 || n--)
+		while ((n<0 || n--) && cycles>0)
 		{
-			if (nextInstruction()<0) break;
+			int cyc;
+			cyc=nextInstruction();
+			if (cyc<0) return false; // execution terminated
+			
+			cycles-=cyc;
 		}
+		return true;
 	}
 
-	static int readEffectiveAddress(const opcode_t code, const M6502_OPCODE op)
+	void irq(const IRQTYPE type)
+	{
+		interrupt::request(type);
+	}
+
+	static int readEffectiveAddress(const opcode_t code, const M6502_OPCODE op, bool forWriteOnly = false)
 	{
 		int cycles=0;
 		
@@ -391,12 +401,18 @@ namespace cpu
 			break;
 
 		case ADR_REL: // Relative mode.
-			addr=PC+(char)valueOf(mmc::fetchByteOperand(PC));
+			addr=valueOf(mmc::fetchByteOperand(PC));
+			if (addr[7])
+			{
+				// sign extension
+				addr|=maddr_t(0xFF00);
+			}
+			addr+=PC;
 			break;
 
 		case ADR_ABS: // Absolute mode. Use the two bytes following the opcode as an address.
 			addr=mmc::fetchWordOperand(PC);
-			value=mmc::read(addr);
+			if (!forWriteOnly) value=mmc::read(addr);
 			break;
 
 		case ADR_IMM: //Immediate mode. The value is given after the opcode.
@@ -428,7 +444,7 @@ namespace cpu
 			addr=mmc::fetchWordOperand(PC);
 			if ((valueOf(addr)&0xFF00)!=((valueOf(addr)+X)&0xFF00)) ++cycles;
 			addr+=X;
-			value=mmc::read(addr);
+			if (!forWriteOnly) value=mmc::read(addr);
 			break;
 
 		case ADR_ABSY:
@@ -437,20 +453,20 @@ namespace cpu
 			addr=mmc::fetchWordOperand(PC);
 			if ((valueOf(addr)&0xFF00)!=((valueOf(addr)+Y)&0xFF00)) ++cycles;
 			addr+=Y;
-			value=mmc::read(addr);
+			if (!forWriteOnly) value=mmc::read(addr);
 			break;
 
 		case ADR_INDX:
 			addr8=mmc::fetchByteOperand(PC).plus(X);
 			addr=mmc::loadZPWord(addr8);
-			value=mmc::read(addr);
+			if (!forWriteOnly) value=mmc::read(addr);
 			break;
 
 		case ADR_INDY:
 			addr=mmc::loadZPWord(mmc::fetchByteOperand(PC));
 			if ((valueOf(addr)&0xFF00)!=((valueOf(addr)+Y)&0xFF00)) ++cycles;
 			addr+=Y;
-			value=mmc::read(addr);
+			if (!forWriteOnly) value=mmc::read(addr);
 			break;
 
 		case ADR_IND:
@@ -458,7 +474,7 @@ namespace cpu
 			// at the given location.
 			addr=mmc::fetchWordOperand(PC);
 			addr=makeWord(mmc::read(addr), mmc::read(maddr_t(((valueOf(addr)+1)&0x00FF)|(valueOf(addr)&0xFF00))));
-			value=mmc::read(addr);
+			if (!forWriteOnly) value=mmc::read(addr);
 			break;
 
 		default:
@@ -685,10 +701,12 @@ jBranch:
 			value = A;
 			writeBack = true;
 			break;
+
 		case INS_STX: // Store index X in memory
 			value = X;
 			writeBack = true;
 			break;
+
 		case INS_STY: // Store index Y in memory
 			value = Y;
 			writeBack = true;
@@ -770,10 +788,10 @@ jBranch:
 
 		// step2: decode
 		const M6502_OPCODE op = opcode::decode(opcode);
-		ERROR_UNLESS(opcode::usual(opcode), INVALID_INSTRUCTION, INVALID_OPCODE, "opcode", opcode, "instruction", op.inst);
+		ERROR_UNLESS(opcode::usual(opcode), INVALID_INSTRUCTION, INVALID_OPCODE, "opaddr", valueOf(opaddr), "opcode", opcode, "instruction", op.inst);
 
 		// step3: read effective address & operands
-		cycles += readEffectiveAddress(opcode, op);
+		cycles += readEffectiveAddress(opcode, op, (op.inst==INS_STA || op.inst==INS_STX || op.inst==INS_STY));
 		assert((valueOf(PC)-valueOf(opaddr)) == op.size);
 
 		debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
@@ -783,7 +801,7 @@ jBranch:
 		if (!execute(op, writeBack, cycles))
 		{
 			// execution failed
-			FATAL_ERROR(INVALID_INSTRUCTION, INVALID_OPCODE, "opcode", opcode, "instruction", op.inst);
+			FATAL_ERROR(INVALID_INSTRUCTION, INVALID_OPCODE, "opaddr", valueOf(opaddr), "opcode", opcode, "instruction", op.inst);
 			return -1;
 		}
 

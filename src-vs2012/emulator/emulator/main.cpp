@@ -10,11 +10,9 @@
 
 #include "nes/internals.h"
 #include "nes/debug.h"
-#include "nes/rom.h"
-#include "nes/opcodes.h"
-#include "nes/mmc.h"
-#include "nes/cpu.h"
-#include "nes/ppu.h"
+#include "nes/emu.h"
+
+#include "ui.h"
 
 static void welcome()
 {
@@ -26,42 +24,26 @@ static void usage(_TCHAR* self_path)
 	// _tprintf(_T("%s <nes file path>\n"), self_path);
 }
 
-static void init()
-{
-	opcode::initTable();
-}
-
-static void deinit()
-{
-	rom::unload();
-}
 
 int _cdecl _tmain(int argc, _TCHAR* argv[])
 {
 	welcome();
 	usage(argv[0]);
 	TestFramework::instance().runAll();
-	init();
+	emu::init();
 	if (argc>=2)
 	{
-		if (rom::load(argv[1]))
+		if (emu::load(argv[1]))
 		{
-			// setup mmc
-			mmc::reset();
-			mmc::setup(rom::mapperType(), (const uint8_t*)rom::getImage(), rom::sizeOfImage());
-
-			// setup cpu
-			cpu::reset();
-
-			// setup ppu
-			ppu::reset();
+			// setup modules
+			emu::setup();
 
 			// create log file
-			FILE *fp = fopen("log.txt", "wt");
+			FILE *fp = fopen("m:\\log.txt", "wt");
 			debug::setOutputFile(fp);
 
 			// start execution
-			cpu::start(-1);
+			emu::nextFrame();
 
 			fclose(fp);
 		}else
@@ -72,7 +54,7 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 	{
 		puts("[!] No rom file specified.");
 	}
-	deinit();
+	emu::deinit();
 	TestFramework::destroy();
 	return 0;
 }

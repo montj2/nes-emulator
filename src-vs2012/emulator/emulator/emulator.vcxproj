@@ -85,6 +85,7 @@
     <ClInclude Include="macros.h" />
     <ClInclude Include="nes\cpu.h" />
     <ClInclude Include="nes\debug.h" />
+    <ClInclude Include="nes\emu.h" />
     <ClInclude Include="nes\internals.h" />
     <ClInclude Include="nes\mmc.h" />
     <ClInclude Include="nes\opcodes.h" />
@@ -96,15 +97,20 @@
     <ClInclude Include="types\flagset.h" />
     <ClInclude Include="types\types.h" />
     <ClInclude Include="types\valueobj.h" />
+    <ClInclude Include="ui.h" />
     <ClInclude Include="unittest\framework.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="emulator.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="nes\cpu.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="nes\debug.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="nes\emu.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -132,6 +138,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="ui.cpp" />
     <ClCompile Include="unittest\framework.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
