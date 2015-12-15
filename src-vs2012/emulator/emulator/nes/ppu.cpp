@@ -30,10 +30,11 @@ static byte_t oamData; // $2004
 // PPU VRAM Access Registers
 typedef flag_set<_addr15_t, PPUADDR, 15> scroll_flag_t;
 typedef flag_set<_addr14_t, PPUADDR, 14> vaddr_flag_t;
-static scroll_flag_t scroll; // $2005 Background Scrolling Offset
+static scroll_flag_t scroll; // $2005 Background Scrolling Offset / Reload register
+static offset3_t xoffset;
 static vaddr_flag_t address; // $2006 VRAM Address Register / Scrolling Pointer
-static vaddr_t tmpAddress;
-static byte_t latch; // the LATCH of $2007 Read/Write Data Register
+static vaddr_flag_t tmpAddress; // debug only
+static byte_t latch; // $2007 Read/Write Data Register
 #define address1 address
 #define address2 scroll
 #define scrollptr address
@@ -65,7 +66,7 @@ namespace mem
 			// do nothing here
 			break;
 		}
-		return vaddr; // auto conversion works?
+		return vaddr;
 	}
 
 	static vaddr_t mirror(vaddr_flag_t vaddr, bool forRead=true)
@@ -112,44 +113,95 @@ namespace mem
 		address.asBitField()+=control[PPUCTRL::VERTICAL_WRITE]?32:1;
 	}
 
-	static void setAddress(const byte_t byte)
+	static void setAddress(const byte_t byte) // $2006
 	{
+		if (firstWrite) // 6 higher bits
+		{
+			assert((byte&~0x3F)==0);
+			tmpAddress.update<PPUADDR::HIGH_BYTE>(byte);
 
-
+			// store in Reload register temporarily
+			address2.copy<PPUADDR::FIRST_WRITE_LO, 0, 2>(byte);
+			control.copy<PPUCTRL::CURRENT_NT, 2, 2>(byte);
+			address2.copy<PPUADDR::FIRST_WRITE_HI, 4, 2>(byte);
+		}else // 8 lower bits
+		{
+			tmpAddress.update<PPUADDR::LOW_BYTE>(byte);
+			
+			{
+				address2.update<PPUADDR::LOW_BYTE>(byte);
+			}
+			address1.update<PPUADDR::LOW_BYTE>(byte);
+			address1.update<PPUADDR::FIRST_WRITE_LO>(address2.select(PPUADDR::FIRST_WRITE_LO));
+			address1.update<PPUADDR::FIRST_WRITE_MID>(control.select(PPUCTRL::CURRENT_NT));
+			address1.update<PPUADDR::FIRST_WRITE_HI>(address2.select(PPUADDR::FIRST_WRITE_HI));
+			// check if correctly written
+			assert(valueOf(tmpAddress)==valueOf(address1));
+		}
+		firstWrite=!firstWrite;
 	}
 
 	static byte_t read()
 	{
-		const vaddr_t addr=mirror(address);
+		const vaddr_t addr=mirror(address, true);
 		incAddress();
 		if (addr<0x3F00)
 		{
 			// return buffered data
 			const byte_t oldLatch=latch;
-			latch=vram.data(addr);
+			latch=vramData(addr);
 			return oldLatch;
 		}
 		// no buffering for palette memory access
-		return vram.data(addr);
+		return vramData(addr);
 	}
 
 	static void write(const byte_t data)
 	{
 		assert(!status[PPUSTATUS::WRITEIGNORED]);
-		const vaddr_t addr=mirror(address);
+		const vaddr_t addr=mirror(address, false);
 		{
 			// ?
 			firstWrite=true;
 			latch=data;
 		}
-		vram.data(addr)=data;
+		vramData(addr)=data;
 		incAddress();
 	}
 }
 
 namespace render
 {
-	void setScroll(const byte_t byte)
+	static void setScroll(const byte_t byte)
+	{
+		if (firstWrite)
+		{
+			// set horizontal scroll
+			xoffset=byte&7;
+			scroll.update<PPUADDR::XSCROLL>(byte>>3);
+		}else
+		{
+			// set vertical scroll
+			scroll.update<PPUADDR::YOFFSET>(byte&7);
+			scroll.update<PPUADDR::YSCROLL>(byte>>3);
+		}
+		firstWrite=!firstWrite;
+	}
+
+	static void getReload(int *FH, int *HT, int *VT, int *NT, int *FV)
+	{
+		if (FH) *FH=xoffset;
+		if (HT) *HT=scroll.select(PPUADDR::TILE_H);
+		if (VT) *VT=scroll.select(PPUADDR::TILE_V);
+		if (NT) *NT=control.select(PPUCTRL::CURRENT_NT);
+		if (FV) *FV=scroll.select(PPUADDR::FV);
+	}
+
+	static void reloadVertical()
+	{
+	}
+
+	static void reloadHorizontal()
 	{
 	}
 }
@@ -165,7 +217,7 @@ namespace ppu
 
 		address1.clearAll();
 		address2.clearAll();
-		tmpAddress = 0;
+		tmpAddress.clearAll();
 
 		// reset state
 		firstWrite = true;
@@ -268,9 +320,9 @@ public:
 		puts("checking VRAM struture...");
 		tassert(sizeof(vram)==0x4000);
 		tassert(sizeof(vram.vrom.patternTables)==0x2000);
-		tassert(ptr_diff(&vramAt(0).attribs[0],&vram.data(0))==0x23C0);
-		tassert(ptr_diff(&vramNt(1).tiles[0][0],&vram.data(0))==0x2400);
-		tassert(ptr_diff(&vram.pal,&vram.data(0))==0x3F00);
+		tassert(ptr_diff(&vramAt(0).attribs[0],&vramData(0))==0x23C0);
+		tassert(ptr_diff(&vramNt(1).tiles[0][0],&vramData(0))==0x2400);
+		tassert(ptr_diff(&vram.pal,&vramData(0))==0x3F00);
 		tassert(sizeof(oam)==0x100);
 
 		printf("[ ] VRAM at 0x%p\n",&vram);
