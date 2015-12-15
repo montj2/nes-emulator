@@ -158,10 +158,13 @@ enum class PPUADDR {
 namespace ppu
 {
 	// global functions
+	void init();
 	void reset();
 
 	bool readPort(const maddr_t maddress, byte_t& data);
 	bool writePort(const maddr_t maddress, const byte_t data);
+
+	void dma(const uint8_t* src);
 
 	int currentScanline();
 	long long currentFrame();

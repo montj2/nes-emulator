@@ -47,6 +47,7 @@ public:
 extern struct NESRAM ram;
 #define ramSt ram.stack
 #define ram0p ram.zeropage
+#define ramPg(num) ram.page(num)
 #define ramData(offset) ram.data(offset)
 
 namespace mmc

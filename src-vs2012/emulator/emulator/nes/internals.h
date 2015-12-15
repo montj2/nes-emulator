@@ -23,12 +23,6 @@
 	typedef uint32_t uint_t;
 #endif // EXACT_TYPE
 
-inline word_t makeWord(byte_t lo, byte_t hi)
-{
-	vassert(lo<=0xFF && hi<=0xFF);
-	return ((word_t)lo)|(((word_t)hi)<<8);
-}
-
 // address
 typedef bit_field<_addr16_t,16> maddr_t;
 typedef bit_field<_addr15_t,15> scroll_t, addr15_t;
@@ -58,6 +52,18 @@ typedef uint16_t rgb16_t, rgb15_t;
 typedef bit_field<unsigned,3> offset3_t;
 typedef bit_field<unsigned,10> offset10_t;
 
+// utils
+inline word_t makeWord(byte_t lo, byte_t hi)
+{
+	vassert(lo<=0xFF && hi<=0xFF);
+	return ((word_t)lo)|(((word_t)hi)<<8);
+}
+
+inline rgb32_t Rgb32(const byte_t r,const byte_t g,const byte_t b)
+{
+    return b|(g<<8)|(r<<16);
+}
+
 // errors
 enum EMUERROR {
 	INVALID_ROM=1,
@@ -80,6 +86,7 @@ enum EMUERRORSUBTYPE {
 	MEMORY_NOT_EXECUTABLE,
 	MEMORY_CANT_BE_READ,
 	MEMORY_CANT_BE_WRITTEN,
+	MEMORY_CANT_BE_COPIED,
 
 	// INVALID_INSTRUCTION
 	INVALID_OPCODE,

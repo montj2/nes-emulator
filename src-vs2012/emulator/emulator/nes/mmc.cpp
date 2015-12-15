@@ -162,6 +162,13 @@ namespace mmc
 			case 7: //[$E000,$FFFF]
 				break;
 			case 2: //[$4000,$6000) Other Registers
+				switch (valueOf(addr))
+				{
+				case 0x4014:
+					ERROR_UNLESS(value<0x8, INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_COPIED, "page", value);
+					ppu::dma(ramPg(value));
+					return;
+				}
 				break;
 		}
 		ERROR(INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_WRITTEN, "addr", valueOf(addr));

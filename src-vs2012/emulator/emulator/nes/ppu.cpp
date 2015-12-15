@@ -8,7 +8,6 @@
 #include "internals.h"
 #include "debug.h"
 #include "rom.h"
-#include "mmc.h"
 #include "cpu.h"
 #include "ppu.h"
 
@@ -118,7 +117,7 @@ namespace mem
 		if (firstWrite) // 6 higher bits
 		{
 			assert((byte&~0x3F)==0);
-			tmpAddress.update<PPUADDR::HIGH_BYTE>(byte);
+			tmpAddress.update<PPUADDR::HIGH_BYTE>(byte&0x3F);
 
 			// store in Reload register temporarily
 			address2.copy<PPUADDR::FIRST_WRITE_LO, 0, 2>(byte);
@@ -129,13 +128,14 @@ namespace mem
 			tmpAddress.update<PPUADDR::LOW_BYTE>(byte);
 			
 			{
+				// ?
 				address2.update<PPUADDR::LOW_BYTE>(byte);
 			}
 			address1.update<PPUADDR::LOW_BYTE>(byte);
 			address1.update<PPUADDR::FIRST_WRITE_LO>(address2.select(PPUADDR::FIRST_WRITE_LO));
 			address1.update<PPUADDR::FIRST_WRITE_MID>(control.select(PPUCTRL::CURRENT_NT));
 			address1.update<PPUADDR::FIRST_WRITE_HI>(address2.select(PPUADDR::FIRST_WRITE_HI));
-			// check if correctly written
+			// check if correctly set
 			assert(valueOf(tmpAddress)==valueOf(address1));
 		}
 		firstWrite=!firstWrite;
@@ -172,6 +172,10 @@ namespace mem
 
 namespace render
 {
+	static rgb32_t pal32[64];
+	static palindex_t vBuffer[240][256];
+	static rgb32_t vBuffer32[256*240];
+
 	static void setScroll(const byte_t byte)
 	{
 		if (firstWrite)
@@ -204,6 +208,81 @@ namespace render
 	static void reloadHorizontal()
 	{
 	}
+
+	static void loadNTSCPal()
+	{
+		pal32[ 0] = Rgb32(117,117,117);
+		pal32[ 1] = Rgb32( 39, 27,143);
+		pal32[ 2] = Rgb32(  0,  0,171);
+		pal32[ 3] = Rgb32( 71,  0,159);
+		pal32[ 4] = Rgb32(143,  0,119);
+		pal32[ 5] = Rgb32(171,  0, 19);
+		pal32[ 6] = Rgb32(167,  0,  0);
+		pal32[ 7] = Rgb32(127, 11,  0);
+		pal32[ 8] = Rgb32( 67, 47,  0);
+		pal32[ 9] = Rgb32(  0, 71,  0);
+		pal32[10] = Rgb32(  0, 81,  0);
+		pal32[11] = Rgb32(  0, 63, 23);
+		pal32[12] = Rgb32( 27, 63, 95);
+		pal32[13] = Rgb32(  0,  0,  0);
+		pal32[14] = Rgb32(  0,  0,  0);
+		pal32[15] = Rgb32(  0,  0,  0);
+		pal32[16] = Rgb32(188,188,188);
+		pal32[17] = Rgb32(  0,115,239);
+		pal32[18] = Rgb32( 35, 59,239);
+		pal32[19] = Rgb32(131,  0,243);
+		pal32[20] = Rgb32(191,  0,191);
+		pal32[21] = Rgb32(231,  0, 91);
+		pal32[22] = Rgb32(219, 43,  0);
+		pal32[23] = Rgb32(203, 79, 15);
+		pal32[24] = Rgb32(139,115,  0);
+		pal32[25] = Rgb32(  0,151,  0);
+		pal32[26] = Rgb32(  0,171,  0);
+		pal32[27] = Rgb32(  0,147, 59);
+		pal32[28] = Rgb32(  0,131,139);
+		pal32[29] = Rgb32(  0,  0,  0);
+		pal32[30] = Rgb32(  0,  0,  0);
+		pal32[31] = Rgb32(  0,  0,  0);
+		pal32[32] = Rgb32(255,255,255);
+		pal32[33] = Rgb32( 63,191,255);
+		pal32[34] = Rgb32( 95,151,255);
+		pal32[35] = Rgb32(167,139,253);
+		pal32[36] = Rgb32(247,123,255);
+		pal32[37] = Rgb32(255,119,183);
+		pal32[38] = Rgb32(255,119, 99);
+		pal32[39] = Rgb32(255,155, 59);
+		pal32[40] = Rgb32(243,191, 63);
+		pal32[41] = Rgb32(131,211, 19);
+		pal32[42] = Rgb32( 79,223, 75);
+		pal32[43] = Rgb32( 88,248,152);
+		pal32[44] = Rgb32(  0,235,219);
+		pal32[45] = Rgb32(  0,  0,  0);
+		pal32[46] = Rgb32(  0,  0,  0);
+		pal32[47] = Rgb32(  0,  0,  0);
+		pal32[48] = Rgb32(255,255,255);
+		pal32[49] = Rgb32(171,231,255);
+		pal32[50] = Rgb32(199,215,255);
+		pal32[51] = Rgb32(215,203,255);
+		pal32[52] = Rgb32(255,199,255);
+		pal32[53] = Rgb32(255,199,219);
+		pal32[54] = Rgb32(255,191,179);
+		pal32[55] = Rgb32(255,219,171);
+		pal32[56] = Rgb32(255,231,163);
+		pal32[57] = Rgb32(227,255,163);
+		pal32[58] = Rgb32(171,243,191);
+		pal32[59] = Rgb32(179,255,207);
+		pal32[60] = Rgb32(159,255,243);
+		pal32[61] = Rgb32(  0,  0,  0);
+		pal32[62] = Rgb32(  0,  0,  0);
+		pal32[63] = Rgb32(  0,  0,  0);
+	}
+
+	static void clear()
+	{
+		// clear frame buffer
+		memset(vBuffer, 0, sizeof(vBuffer));
+		memset(vBuffer32, 0, sizeof(vBuffer32));
+	}
 }
 
 namespace ppu
@@ -228,6 +307,14 @@ namespace ppu
 		// clear memory
 		memset(&vram,0,sizeof(vram));
 		memset(&oam,0,sizeof(oam));
+
+		// clear video buffer
+		render::clear();
+	}
+
+	void init()
+	{
+		render::loadNTSCPal();
 	}
 
 	bool readPort(const maddr_t maddress, byte_t& data)
@@ -293,6 +380,12 @@ namespace ppu
 
 	void hsync()
 	{
+	}
+
+	void dma(const uint8_t* src)
+	{
+		assert(src!=nullptr);
+		memcpy(&oam, src, sizeof(oam));
 	}
 
 	int currentScanline()
