@@ -17,6 +17,9 @@ __declspec(align(0x1000))
 struct NESVRAM vram;
 struct NESOAM oam;
 
+// addresses of currently selected VROM banks.
+static int prevBankSrc[8];
+
 // PPU Control & Status Registers
 static flag_set<_reg8_t, PPUCTRL, 8> control; // $2000
 static flag_set<_reg8_t, PPUMASK, 8> mask; // $2001
@@ -55,10 +58,10 @@ namespace mem
 		switch (rom::mirrorMode())
 		{
 		case MIRROR_HORIZONTAL:
-			vaddr-=PPUADDR::HNT;
+			vaddr-=PPUADDR::NT_H;
 			break;
 		case MIRROR_VERTICAL:
-			vaddr-=PPUADDR::VNT;
+			vaddr-=PPUADDR::NT_V;
 			break;
 		case MIRROR_SINGLESCREEN:
 			vaddr-=PPUADDR::NT;
@@ -138,6 +141,7 @@ namespace mem
 			address1.update<PPUADDR::FIRST_WRITE_LO>(address2.select(PPUADDR::FIRST_WRITE_LO));
 			address1.update<PPUADDR::FIRST_WRITE_MID>(control.select(PPUCTRL::CURRENT_NT));
 			address1.update<PPUADDR::FIRST_WRITE_HI>(address2.select(PPUADDR::FIRST_WRITE_HI));
+			address1.asBitField()&=address1.asBitField().MAX;
 			// check if correctly set
 			assert(valueOf(tmpAddress)==valueOf(address1));
 		}
@@ -201,15 +205,24 @@ namespace render
 		if (HT) *HT=scroll.select(PPUADDR::TILE_H);
 		if (VT) *VT=scroll.select(PPUADDR::TILE_V);
 		if (NT) *NT=control.select(PPUCTRL::CURRENT_NT);
-		if (FV) *FV=scroll.select(PPUADDR::FV);
+		if (FV) *FV=scroll.select(PPUADDR::YOFFSET);
 	}
 
 	static void reloadVertical()
 	{
+		int VT, NT, FV;
+		getReload(0, 0, &VT, &NT, &FV);
+		address.update<PPUADDR::TILE_V>(VT);
+		address.update<PPUADDR::NT_V>(NT>>1);
+		address.update<PPUADDR::YOFFSET>(FV);
 	}
 
-	static void reloadHorizontal()
+	static void reloadHorizontal(int *FH=0)
 	{
+		int HT, NT;
+		getReload(FH, &HT, 0, &NT, 0);
+		address.update<PPUADDR::TILE_H>(HT);
+		address.update<PPUADDR::NT_H>(NT&1);
 	}
 
 	static bool enabled()
@@ -235,7 +248,7 @@ namespace render
 
 	static void startVBlank()
 	{
-		// present frame to screen
+		// present frame onto screen
 		present();
 		// set VBlank flag
 		status|=PPUSTATUS::VBLANK;
@@ -260,17 +273,94 @@ namespace render
 
 	static void drawBackground()
 	{
+		if (mask[PPUMASK::BG_VISIBLE])
+		{
+			// determine origin
+			int xoffset;
+			reloadHorizontal(&xoffset);
+			const int startX=(address(PPUADDR::XSCROLL)<<3)+xoffset;
+			const int startY=(address(PPUADDR::YSCROLL)<<3)+address(PPUADDR::YOFFSET);
+
+			// determine what tables to use
+			const NESVRAM::NAMEATTRIB_TABLE::NAME_TABLE *nt;
+			const NESVRAM::NAMEATTRIB_TABLE::ATTRIBUTE_TABLE *attr;
+			const NESVRAM::VROM::PATTERN_TABLE *pt;
+			nt=&vramNt(address(PPUADDR::NT));
+			attr=&vramAt(address(PPUADDR::NT));
+			pt=&vramPt(control[PPUCTRL::BG_PATTERN]?1:0);
+
+			// determine tile position in current name table
+			const int tileRow=(startY>>3)%30;
+			const int tileYOffset=startY&7;
+
+			for (int tileCounter=(startX>>3);tileCounter<=31;tileCounter++)
+			{
+				tileid_t tileIndex;
+				tileIndex = tileid_t(nt->tiles[tileRow][tileCounter]);
+				int X;
+				X = (tileCounter<<3)+7-startX;
+
+				// look up the tile in attribute table to find its color (D2 and D3)
+				byte_t value=attr->attribs[((tileRow>>2)<<3)+(tileCounter>>2)];
+				switch ((((tileRow&3)>>1)<<1)|(tileCounter&3)>>1)
+				{
+					case 0:
+						value<<=2;
+						break;
+					case 1:
+						break;
+					case 2:
+						value>>=2;
+						break;
+					case 3:
+						value>>=4;
+						break;
+				}
+				const byte_t colorD2D3 = value&0x0C;
+
+				// look up the tile in pattern table to find its color (D0 and D1)
+				const byte_t colorD0 = pt->tiles[tileIndex].colorD0[tileYOffset];
+				const byte_t colorD1 = pt->tiles[tileIndex].colorD1[tileYOffset];
+
+				for (int pixel=min(X,7);pixel>=0;pixel--)
+				{
+					// Note: B0 indicates the color at the 7th pixel of the tile
+					const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
+					const byte_t color = colorD0D1|colorD2D3;
+					if (color!=0) // opaque
+					{
+						vassert(X-pixel>=0 && X-pixel<256);
+						vBuffer[scanline][X-pixel]=color;
+					}
+				}
+			}
+
+			// set address to next scanline
+			if (address.inc(PPUADDR::YOFFSET)==0)
+			{
+				if (address.inc(PPUADDR::YSCROLL)==30)
+				{
+					address.update<PPUADDR::YSCROLL>(0);
+					address.flip(PPUADDR::NT_V);
+					// no need to update scroll reload
+				}
+			}
+		}
 	}
 
 	static void drawSprites()
 	{
+		if (mask[PPUMASK::SPR_VISIBLE])
+		{
+			reloadHorizontal();
+		}
 	}
 
 	static void renderScanline()
 	{
 		if (enabled())
 		{
-			reloadHorizontal();
+			assert(scanline>=0 && scanline<=239);
 			drawBackground();
 			drawSprites();
 		}
@@ -420,8 +510,48 @@ namespace ppu
 		memset(&vram,0,sizeof(vram));
 		memset(&oam,0,sizeof(oam));
 
+		// reset bank state
+		memset(prevBankSrc, -1, sizeof(prevBankSrc));
+
 		// clear video buffer
 		render::clear();
+	}
+
+	void copyBanks(const uint8_t* vrom, const int dest, const int src, const int count)
+	{
+		memcpy(&vramData(dest*0x400), &vrom[src*0x400], count*0x400);
+	}
+
+	void bankSwitch(const uint8_t* vrom, const int dest, const int src, const int count)
+	{
+		for (int i=0; i<count; i++)
+		{
+			if (prevBankSrc[dest+i]!=src+i)
+			{
+				prevBankSrc[dest+i]=src+i;
+				copyBanks(vrom, dest+i, src+i, 1);
+			}
+		}
+	}
+
+	bool setup(int mapper_type, const uint8_t* vrom, const size_t vrom_size)
+	{
+		switch (mapper_type)
+		{
+		case 0: // no mapper
+			if (vrom_size == 0x2000) // 8K of texture
+				bankSwitch(vrom, 0, 0, 8);
+			else
+			{
+				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE);
+				return false;
+			}
+			return true;
+		}
+		// unknown mapper
+		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE);
+		return false;
+
 	}
 
 	void init()

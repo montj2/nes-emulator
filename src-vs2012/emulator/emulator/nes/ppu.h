@@ -32,8 +32,8 @@ struct NESVRAM
         {
             struct PATTERN // 8px*8px
             {
-                uint8_t colorlow[8]; // D0
-                uint8_t colorhi[8]; // D1
+                uint8_t colorD0[8];
+                uint8_t colorD1[8];
             }tiles[256];
         }patternTables[2];
 	}vrom;
@@ -88,9 +88,9 @@ public:
 extern struct NESVRAM vram;
 extern struct NESOAM oam;
 
-#define vramPt(index) vram.vrom.patternTables[index]
-#define vramNt(index) vram.nameTables[index].nameTable
-#define vramAt(index) vram.nameTables[index].attribTable
+#define vramPt(ptindex) vram.vrom.patternTables[ptindex]
+#define vramNt(ntindex) vram.nameTables[ntindex].nameTable
+#define vramAt(ntindex) vram.nameTables[ntindex].attribTable
 #define vramData(offset) vram.data(offset)
 #define oamData(offset) oam.data(offset)
 
@@ -133,13 +133,11 @@ enum class PPUADDR {
     TILE_V=0x3E0,
     YSCROLL=TILE_V,
     NT_H=0x400,
-    HNT=NT_H,
     NT_V=0x800,
-    VNT=NT_V,
-    NT=VNT|HNT,
+    NT=NT_H|NT_V,
     NT_OFFSET=0x3FF,
-    FV=0x7000,
-    YOFFSET=FV,
+    YOFFSET=0x7000,
+	// XOFFSET is stored in reload register
 
 	FIRST_WRITE_HI=0x3000,
 	FIRST_WRITE_MID=0x0C00,
@@ -160,6 +158,8 @@ namespace ppu
 	// global functions
 	void init();
 	void reset();
+
+	bool setup(int mapper_type, const uint8_t* vrom, const size_t vrom_size);
 
 	bool readPort(const maddr_t maddress, byte_t& data);
 	bool writePort(const maddr_t maddress, const byte_t data);

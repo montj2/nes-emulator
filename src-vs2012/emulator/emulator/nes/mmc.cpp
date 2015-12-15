@@ -137,8 +137,8 @@ namespace mmc
 				return 0;
 			case 0x4016: // Controller Registers
 			case 0x4017:
-				if (ui::hasController((addr==0x4016)?1:0))
-					return ui::readController((addr==0x4016)?1:0)?1:0; // returns button state
+				if (ui::hasController((addr==0x4017)?1:0))
+					return ui::readController((addr==0x4017)?1:0)?1:0; // returns button state
 				else
 					return 0x2; // joystick not connected
 			}

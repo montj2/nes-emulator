@@ -69,7 +69,14 @@ namespace ui
 	{
 		vassert(player==0 || player==1);
 		assert(hasController(player));
-		assert(joypadPosition[player]<BUTTON_COUNT);
-		return buttonState[player][joypadPosition[player]%BUTTON_COUNT]!=0;
+		return readController(player, (joypadPosition[player]++)%BUTTON_COUNT);
+	}
+
+	bool readController(const int player, const int button)
+	{
+		vassert(player==0 || player==1);
+		assert(hasController(player));
+		assert(button>=0 && button<BUTTON_COUNT);
+		return buttonState[player][button%BUTTON_COUNT]!=0;
 	}
 }

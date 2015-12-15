@@ -54,7 +54,7 @@ public:
 	void flip(const ET e)
 	{
 		vassert(SINGLE_BIT((T)e));
-		_value^=e;
+		_value^=(T)e;
 	}
 
 	void operator ^=(const ET e)

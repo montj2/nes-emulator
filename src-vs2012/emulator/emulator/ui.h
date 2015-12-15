@@ -18,6 +18,7 @@ namespace ui
 	bool hasController(const int player);
 	void resetController(const int player);
 	bool readController(const int player);
+	bool readController(const int player, const int button);
 
 	// global events
 	void onFrameBegin();

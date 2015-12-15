@@ -43,6 +43,7 @@ namespace emu
 
 		// setup ppu
 		ppu::reset();
+		ppu::setup(rom::mapperType(), (const uint8_t*)rom::getVROM(), rom::sizeOfVROM());
 	}
 
 	bool nextFrame()
