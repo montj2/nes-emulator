@@ -15,10 +15,10 @@ namespace ui
 
 	void blt32(const uint32_t buffer[],const int width,const int height);
 
-	bool hasController(const int player);
-	void resetController(const int player);
-	bool readController(const int player);
-	bool readController(const int player, const int button);
+	bool hasInput(const int player);
+	void resetInput(const int player);
+	bool readInput(const int player);
+	bool readInput(const int player, const int button);
 
 	// global events
 	void onFrameBegin();

@@ -63,7 +63,7 @@ namespace debug
 	// a NULL at the end of argv is REQUIRED!
 	static void printToConsole(int type, const wchar_t * typestr, int stype, const wchar_t * stypestr, const wchar_t * file, const wchar_t * function_name, unsigned long line_number, va_list argv)
 	{
-		wprintf(L"Type: %s(%d)\nSub Type: %s(%d)\nProc: %s:%ld\n", typestr, type, stypestr, stype, function_name, line_number);
+		wprintf(L"Type: %s (%d)\nSub Type: %s (%d)\nProc: %s:%ld\n", typestr, type, stypestr, stype, function_name, line_number);
 		if (file != nullptr)
 		{
 			wprintf(L"File: %s\n", file);
@@ -74,7 +74,7 @@ namespace debug
 		while ((name=va_arg(argv, char*))!=nullptr)
 		{
 			int value=va_arg(argv, int);
-			printf("<%s> = %d (hex: 0x%x)\n", name, value, value);
+			printf("<%s> = %Xh (%d)\n", name, value, value);
 		}
 	}
 
@@ -106,6 +106,7 @@ namespace debug
 			CASE_ENUM_RETURN_STRING(MEMORY_NOT_EXECUTABLE);
 			CASE_ENUM_RETURN_STRING(MEMORY_CANT_BE_READ);
 			CASE_ENUM_RETURN_STRING(MEMORY_CANT_BE_WRITTEN);
+			CASE_ENUM_RETURN_STRING(MEMORY_CANT_BE_COPIED);
 
 			CASE_ENUM_RETURN_STRING(INVALID_OPCODE);
 			CASE_ENUM_RETURN_STRING(INVALID_ADDRESS_MODE);

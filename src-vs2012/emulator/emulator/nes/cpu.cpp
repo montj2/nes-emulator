@@ -285,17 +285,8 @@ namespace arithmetic
 	static void ADC()
 	{
 		// Add with carry. A <- [A]+[M]+C
-#ifndef WANT_BCD_MODE
-		goto jBinaryMode;
-#endif
-		if (!P[F_BCD])
-		{
-jBinaryMode:
-			// binary addition
-			temp=A+value+(P[F_CARRY]?1:0);
-			P.change<F_OVERFLOW>(!((A^value)&0x80) && ((A^temp)&0x80));
-			P.change<F_CARRY>(SUM.overflow());
-		}else
+#ifdef WANT_BCD
+		if (P[F_BCD])
 		{
 			// bcd addition
 			assert((A&0xF)<=9 && (A>>4)<=9);
@@ -323,15 +314,23 @@ jBinaryMode:
 				temp+=(value&0xF0);
 				P-=F_OVERFLOW;
 			}
+		}else
+#endif
+		{
+			// binary addition
+			temp=A+value+(P[F_CARRY]?1:0);
+			P.change<F_OVERFLOW>(!((A^value)&0x80) && ((A^temp)&0x80));
+			P.change<F_CARRY>(SUM.overflow());
 		}
 		status::setNZ(regA(temp));
 	}
 
 	static void SBC()
 	{
-		// can't be used to subtract a bcd number
+#ifdef WANT_BCD_MODE
+		// SBC is currently impossible in decimal mode
 		assert(!P[F_BCD]);
-
+#endif
 		temp=A-value-(P[F_CARRY]?0:1);
 
 		P.change<F_CARRY>(!SUM.overflow());

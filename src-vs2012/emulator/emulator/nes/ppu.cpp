@@ -261,7 +261,7 @@ namespace render
 
 	static void duringVBlank()
 	{
-		// keep VBlank flag turned on
+		// ? keep VBlank flag turned on
 		status|=PPUSTATUS::VBLANK;
 	}
 
@@ -295,10 +295,8 @@ namespace render
 
 			for (int tileCounter=(startX>>3);tileCounter<=31;tileCounter++)
 			{
-				tileid_t tileIndex;
-				tileIndex = tileid_t(nt->tiles[tileRow][tileCounter]);
-				int X;
-				X = (tileCounter<<3)+7-startX;
+				const tileid_t tileIndex(nt->tiles[tileRow][tileCounter]);
+				const int X = (tileCounter<<3)+7-startX;
 
 				// look up the tile in attribute table to find its color (D2 and D3)
 				byte_t value=attr->attribs[((tileRow>>2)<<3)+(tileCounter>>2)];
@@ -327,6 +325,7 @@ namespace render
 					// Note: B0 indicates the color at the 7th pixel of the tile
 					const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
 					const byte_t color = colorD0D1|colorD2D3;
+					// write to frame buffer
 					vassert(X-pixel>=0 && X-pixel<256);
 					vBuffer[scanline][X-pixel]=color;
 				}
@@ -357,7 +356,7 @@ namespace render
 	{
 		if (enabled())
 		{
-			assert(scanline>=0 && scanline<=239);
+			vassert(scanline>=0 && scanline<=239);
 			drawBackground();
 			drawSprites();
 		}
@@ -514,7 +513,7 @@ namespace ppu
 		render::clear();
 	}
 
-	void copyBanks(const uint8_t* vrom, const int dest, const int src, const int count)
+	static void copyBanks(const uint8_t* vrom, const int dest, const int src, const int count)
 	{
 		memcpy(&vramData(dest*0x400), &vrom[src*0x400], count*0x400);
 	}

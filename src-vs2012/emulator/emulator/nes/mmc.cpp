@@ -135,10 +135,10 @@ namespace mmc
 			{
 			case 0x4015: // APU Register
 				return 0;
-			case 0x4016: // Controller Registers
+			case 0x4016: // Input Registers
 			case 0x4017:
-				if (ui::hasController((addr==0x4017)?1:0))
-					return ui::readController((addr==0x4017)?1:0)?1:0; // returns button state
+				if (ui::hasInput((addr==0x4017)?1:0))
+					return ui::readInput((addr==0x4017)?1:0)?1:0; // outputs button state
 				else
 					return 0x2; // joystick not connected
 			}
@@ -181,12 +181,12 @@ namespace mmc
 					ERROR_UNLESS(value<0x8, INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_COPIED, "page", value);
 					ppu::dma(ramPg(value));
 					return;
-				// Controller Registers 
+				// Input Registers 
 				case 0x4016:
 				case 0x4017:
 					if (!(value&1))
 					{
-						ui::resetController((valueOf(addr)==0x4017)?1:0);
+						ui::resetInput((valueOf(addr)==0x4017)?1:0);
 					}
 					return;
 				}
