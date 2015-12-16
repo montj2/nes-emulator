@@ -10,7 +10,7 @@ enum class PPUCTRL {
     MASTER_SLAVE=0x40,
     LARGE_SPRITE=0x20,
     BG_PATTERN=0x10,
-    SPRITE_PATTERN=0x8,
+    SPR_PATTERN=0x8,
     VERTICAL_WRITE=0x4,
     CURRENT_NT=0x3
 };
@@ -54,7 +54,7 @@ enum class PPUADDR {
 	PAL_ITEM=0x3
 };
 
-enum class SPRATTR : uint8_t {
+enum class SPRATTR {
 	COLOR_HI=0x3,
 	RESERVED=0x1C,
 	PRIORITY=0x20,
@@ -71,7 +71,7 @@ private:
 	{
 		uint8_t yminus1; // y coordinate - 1
 		uint8_t tile; // tile index number
-		SPRATTR attrib; // attributes
+		flag_set<uint8_t, SPRATTR> attrib; // attributes
 		uint8_t x; // x coordinate
 	}sprites[64];
 
@@ -181,7 +181,7 @@ extern struct NESOAM oam;
 #define vramData(offset) vram.data(offset)
 #define oamData(offset) oam.data(offset)
 
-#define spr(index) oam.sprite(index)
+#define oamSprite(index) oam.sprite(index)
 #define colorIdx(index) vram.colorIndex(index)
 
 namespace ppu
