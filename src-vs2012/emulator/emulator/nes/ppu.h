@@ -47,6 +47,28 @@ struct NESVRAM
 		struct ATTRIBUTE_TABLE
 		{
 			uint8_t attribs[64];
+
+			// returns the higher 2 bits of the palette index for the specified tile
+			uint8_t lookup(const int tileRow, const int tileCol) const
+			{
+				vassert((unsigned)tileRow<30 && (unsigned)tileCol<32);
+				byte_t value=attribs[((tileRow>>2)<<3)+(tileCol>>2)];
+				switch ((((tileRow&3)>>1)<<1)|(tileCol&3)>>1)
+				{
+					case 0:
+						value<<=2;
+						break;
+					case 1:
+						break;
+					case 2:
+						value>>=2;
+						break;
+					case 3:
+						value>>=4;
+						break;
+				}
+				return value&0x0C;
+			}
 		}attribTable;
 	}nameTables[4];
 

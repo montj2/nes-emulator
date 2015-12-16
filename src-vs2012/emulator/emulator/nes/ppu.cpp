@@ -54,19 +54,18 @@ namespace mem
 {
 	static vaddr_t ntMirror(vaddr_flag_t vaddr)
 	{
-		vassert(vaddr.select(PPUADDR::BANK)==2);
 		switch (rom::mirrorMode())
 		{
-		case MIRROR_HORIZONTAL:
+		case MIRRORING::HORIZONTAL:
 			vaddr-=PPUADDR::NT_H;
 			break;
-		case MIRROR_VERTICAL:
+		case MIRRORING::VERTICAL:
 			vaddr-=PPUADDR::NT_V;
 			break;
-		case MIRROR_SINGLESCREEN:
+		case MIRRORING::SINGLESCREEN:
 			vaddr-=PPUADDR::NT;
 			break;
-		case MIRROR_FOURSCREEN:
+		case MIRRORING::FOURSCREEN:
 			// do nothing here
 			break;
 		}
@@ -120,7 +119,7 @@ namespace mem
 
 	static void setAddress(const byte_t byte) // $2006
 	{
-		if (firstWrite) // 6 higher bits
+		if (firstWrite) // higher 2 bits
 		{
 			assert((byte&~0x3F)==0);
 			tmpAddress.update<PPUADDR::HIGH_BYTE>(byte&0x3F);
@@ -129,7 +128,7 @@ namespace mem
 			address2.copy<PPUADDR::FIRST_WRITE_LO, 0, 2>(byte);
 			control.copy<PPUCTRL::CURRENT_NT, 2, 2>(byte);
 			address2.copy<PPUADDR::FIRST_WRITE_HI, 4, 2>(byte);
-		}else // 8 lower bits
+		}else // lower 8 bits
 		{
 			tmpAddress.update<PPUADDR::LOW_BYTE>(byte);
 			
@@ -278,15 +277,21 @@ namespace render
 			// determine origin
 			int xoffset;
 			reloadHorizontal(&xoffset);
-			const int startX=(address(PPUADDR::XSCROLL)<<3)+xoffset;
+			int startX=(address(PPUADDR::XSCROLL)<<3)+xoffset;
+			startX=frameNum%255;
+			rom::setMirrorMode(MIRRORING::SINGLESCREEN);
 			const int startY=(address(PPUADDR::YSCROLL)<<3)+address(PPUADDR::YOFFSET);
 
-			// determine what tables to use
+			assert(startX>=0 && startX<256);
+			assert(startY>=0 && startY<240);
+
+			// determine what tables to use for the first part
+			vaddr_flag_t mirrored(mem::ntMirror(address));
 			const NESVRAM::NAMEATTRIB_TABLE::NAME_TABLE *nt;
 			const NESVRAM::NAMEATTRIB_TABLE::ATTRIBUTE_TABLE *attr;
 			const NESVRAM::VROM::PATTERN_TABLE *pt;
-			nt=&vramNt(address(PPUADDR::NT));
-			attr=&vramAt(address(PPUADDR::NT));
+			nt=&vramNt(mirrored(PPUADDR::NT));
+			attr=&vramAt(mirrored(PPUADDR::NT));
 			pt=&vramPt(control[PPUCTRL::BG_PATTERN]?1:0);
 
 			// determine tile position in current name table
@@ -299,22 +304,7 @@ namespace render
 				const int X = (tileCounter<<3)+7-startX;
 
 				// look up the tile in attribute table to find its color (D2 and D3)
-				byte_t value=attr->attribs[((tileRow>>2)<<3)+(tileCounter>>2)];
-				switch ((((tileRow&3)>>1)<<1)|(tileCounter&3)>>1)
-				{
-					case 0:
-						value<<=2;
-						break;
-					case 1:
-						break;
-					case 2:
-						value>>=2;
-						break;
-					case 3:
-						value>>=4;
-						break;
-				}
-				const byte_t colorD2D3 = value&0x0C;
+				const byte_t colorD2D3 = attr->lookup(tileRow, tileCounter);
 
 				// look up the tile in pattern table to find its color (D0 and D1)
 				const byte_t colorD0 = pt->tiles[tileIndex].colorD0[tileYOffset];
@@ -328,6 +318,43 @@ namespace render
 					// write to frame buffer
 					vassert(X-pixel>=0 && X-pixel<256);
 					vBuffer[scanline][X-pixel]=color;
+				}
+			}
+
+			if (startX>=0) // TODO: >0
+			{
+				// now render for the second part
+				// switch across to the next tables
+				{
+					// ?
+					address.flip(PPUADDR::NT_H);
+				}
+				mirrored=mem::ntMirror(address);
+				nt=&vramNt(mirrored(PPUADDR::NT));
+				attr=&vramAt(mirrored(PPUADDR::NT));
+
+				const int endTile = (startX+7)>>3;
+				for (int tileCounter=0;tileCounter<endTile;tileCounter++)
+				{
+					const tileid_t tileIndex(nt->tiles[tileRow][tileCounter]);
+					const int X = (tileCounter<<3)+7+(256-startX);
+
+					// look up the tile in attribute table to find its color (D2 and D3)
+					const byte_t colorD2D3 = attr->lookup(tileRow, tileCounter);
+
+					// look up the tile in pattern table to find its color (D0 and D1)
+					const byte_t colorD0 = pt->tiles[tileIndex].colorD0[tileYOffset];
+					const byte_t colorD1 = pt->tiles[tileIndex].colorD1[tileYOffset];
+
+					for (int pixel=max(X-255,0);pixel<=7;pixel++)
+					{
+						// Note: B0 indicates the color at the 7th pixel of the tile
+						const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
+						const byte_t color = colorD0D1|colorD2D3;
+						// write to frame buffer
+						vassert(X-pixel>=0 && X-pixel<256);
+						vBuffer[scanline][X-pixel]=color;
+					}
 				}
 			}
 
@@ -673,14 +700,14 @@ public:
 
 	virtual TestResult run()
 	{
-		for (int i=MIRROR_MIN;i<=MIRROR_MAX;i++)
+		for (int i=(int)MIRRORING::MIN;i<=(int)MIRRORING::MAX;i++)
 		{
 			rom::setMirrorMode((MIRRORING)i);
 			tassert(mem::mirror(vaddr_t(0x1395))==0x1395); // no mapping should occur
 		}
 
 		// test nametable mirroring
-		rom::setMirrorMode(MIRROR_HORIZONTAL);
+		rom::setMirrorMode(MIRRORING::HORIZONTAL);
 		/*
 		this.defineMirrorRegion(0x2400,0x2000,0x400);
 		this.defineMirrorRegion(0x2c00,0x2800,0x400);
@@ -696,7 +723,7 @@ public:
 
 		tassert(mem::mirror(vaddr_t(0x2D22))==0x2922);
 
-		rom::setMirrorMode(MIRROR_VERTICAL);
+		rom::setMirrorMode(MIRRORING::VERTICAL);
 		/*
 		this.defineMirrorRegion(0x2800,0x2000,0x400);
 		this.defineMirrorRegion(0x2c00,0x2400,0x400);
@@ -709,7 +736,7 @@ public:
 		tassert(mem::mirror(vaddr_t(0x28A3))==0x20A3);
 		tassert(mem::mirror(vaddr_t(0x2FFF))==0x27FF);
 
-		rom::setMirrorMode(MIRROR_SINGLESCREEN);
+		rom::setMirrorMode(MIRRORING::SINGLESCREEN);
 		/*
 		this.defineMirrorRegion(0x2400,0x2000,0x400);
 		this.defineMirrorRegion(0x2800,0x2000,0x400);
@@ -717,7 +744,7 @@ public:
 		*/
 		tassert(mem::mirror(vaddr_t(0x2D70))==0x2170);
 
-		rom::setMirrorMode(MIRROR_FOURSCREEN);
+		rom::setMirrorMode(MIRRORING::FOURSCREEN);
 		tassert(mem::mirror(vaddr_t(0x2FED))==0x2FED);
 		tassert(mem::mirror(vaddr_t(0x3AED))==0x2AED);
 

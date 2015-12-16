@@ -58,20 +58,20 @@ namespace rom
 		printf("[ ] %u ROM Control Byte #1\n", romCtrl);
 		printf("[ ] %u ROM Control Byte #2\n", romCtrl2);
 
-		mapper=romCtrl(RCTL1_MAPPERLOW);
-		mapper|=romCtrl2(RCTL2_MAPPERHIGH)<<4;
+		mapper=romCtrl(ROMCONTROL1::MAPPERLOW);
+		mapper|=romCtrl2(ROMCONTROL2::MAPPERHIGH)<<4;
 		printf("[ ] Mapper : #%u\n",mapper);
 
-		mirroring=romCtrl[RCTL1_VERTICALM]?MIRROR_VERTICAL:MIRROR_HORIZONTAL;
-		if (romCtrl[RCTL1_FOURSCREEN]) mirroring=MIRROR_FOURSCREEN;
+		mirroring=romCtrl[ROMCONTROL1::VERTICALM]?MIRRORING::VERTICAL:MIRRORING::HORIZONTAL;
+		if (romCtrl[ROMCONTROL1::FOURSCREEN]) mirroring=MIRRORING::FOURSCREEN;
 
 		printf("[ ] Mirroring type : %u\n", mirroring);
-		printf("[ ] Fourscreen mode : %u\n", romCtrl[RCTL1_FOURSCREEN]);
-		printf("[ ] Trainer data present : %u\n", romCtrl[RCTL1_TRAINER]);
-		printf("[ ] SRAM present : %u\n", romCtrl[RCTL1_BATTERYPACK]);
+		printf("[ ] Fourscreen mode : %u\n", romCtrl[ROMCONTROL1::FOURSCREEN]);
+		printf("[ ] Trainer data present : %u\n", romCtrl[ROMCONTROL1::TRAINER]);
+		printf("[ ] SRAM present : %u\n", romCtrl[ROMCONTROL1::BATTERYPACK]);
     
 		// read trainer data (if present)
-		if (romCtrl[RCTL1_TRAINER])
+		if (romCtrl[ROMCONTROL1::TRAINER])
 		{
 			trainerSize = 512;
 			trainerData = new char[trainerSize];
@@ -118,7 +118,7 @@ namespace rom
 		return mapper;
 	}
 
-	int mirrorMode()
+	MIRRORING mirrorMode()
 	{
 		return mirroring;
 	}

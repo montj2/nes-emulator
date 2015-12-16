@@ -1,24 +1,24 @@
 // rom config
-enum MIRRORING {
-	MIRROR_MIN=0,
-    MIRROR_HORIZONTAL=0,
-    MIRROR_VERTICAL,
-    MIRROR_FOURSCREEN,
-    MIRROR_SINGLESCREEN,
-	MIRROR_MAX=MIRROR_SINGLESCREEN
+enum class MIRRORING {
+	MIN=0,
+    HORIZONTAL=0,
+    VERTICAL,
+    FOURSCREEN,
+    SINGLESCREEN,
+	MAX=SINGLESCREEN
 };
 
-enum ROMCONTROL1 {
-    RCTL1_VERTICALM=0x1,
-    RCTL1_BATTERYPACK=0x2,
-    RCTL1_TRAINER=0x4,
-    RCTL1_FOURSCREEN=0x8,
-    RCTL1_MAPPERLOW=0xF0
+enum class ROMCONTROL1 {
+    VERTICALM=0x1,
+    BATTERYPACK=0x2,
+    TRAINER=0x4,
+    FOURSCREEN=0x8,
+    MAPPERLOW=0xF0
 };
 
-enum ROMCONTROL2 {
-    RCTL2_RESERVED=0xF,
-    RCTL2_MAPPERHIGH=0xF0
+enum class ROMCONTROL2 {
+    RESERVED=0xF,
+    MAPPERHIGH=0xF0
 };
 
 // global functions
@@ -28,7 +28,7 @@ namespace rom
 	void unload();
 
 	int mapperType();
-	int mirrorMode();
+	MIRRORING mirrorMode();
 	void setMirrorMode(MIRRORING newMode);
 
 	const char* getImage();
