@@ -74,6 +74,7 @@ namespace mem
 
 	static vaddr_t mirror(vaddr_flag_t vaddr, bool forRead=true)
 	{
+		assert((valueOf(vaddr)>>14)==0);
 		switch (vaddr.select(PPUADDR::BANK))
 		{
 		case 0:
@@ -162,9 +163,15 @@ namespace mem
 		return vramData(addr);
 	}
 
+	static bool canWrite()
+	{
+		return !status[PPUSTATUS::WRITEIGNORED];
+	}
+
 	static void write(const byte_t data)
 	{
-		assert(!status[PPUSTATUS::WRITEIGNORED]);
+		// make sure it's safe to write
+		assert(canWrite());
 		const vaddr_t addr=mirror(address, false);
 		{
 			// ?
@@ -224,6 +231,20 @@ namespace render
 		address.update<PPUADDR::NT_H>(NT&1);
 	}
 
+	static void clear()
+	{
+		// clear back buffer
+		memset(vBuffer, 0, sizeof(vBuffer));
+	}
+
+	static void reset()
+	{
+		render::clear();
+
+		// also clear front buffer
+		memset(vBuffer32, 0, sizeof(vBuffer32));
+	}
+
 	static bool enabled()
 	{
 		return mask[PPUMASK::BG_VISIBLE] || mask[PPUMASK::SPR_VISIBLE];
@@ -231,15 +252,18 @@ namespace render
 
 	static void present()
 	{
-		// cache palette colors
-		rgb32_t p32[32];
-		for (int i=0;i<32;i++) p32[i]=pal32[colorIdx(i)];
+		if (enabled())
+		{
+			// cache palette colors
+			rgb32_t p32[32];
+			for (int i=0;i<32;i++) p32[i]=pal32[colorIdx(i)];
 
-		// look up each pixel
-		rgb32_t* vBuf32=vBuffer32;
-		const palindex_t* vBufIdx=&vBuffer[0][0];
-		for (int i=0;i<256*240;i++)
-			*vBuf32++=p32[valueOf(*vBufIdx++)];
+			// look up each pixel
+			rgb32_t* vBuf32=vBuffer32;
+			const palindex_t* vBufIdx=&vBuffer[0][0];
+			for (int i=0;i<256*240;i++)
+				*vBuf32++=p32[valueOf(*vBufIdx++)];
+		}
 		
 		// display
 		ui::blt32(vBuffer32, 256, 240);
@@ -251,6 +275,8 @@ namespace render
 		present();
 		// set VBlank flag
 		status|=PPUSTATUS::VBLANK;
+		// allow writes
+		status-=PPUSTATUS::WRITEIGNORED;
 		// do NMI
 		if (control[PPUCTRL::NMI_ENABLED])
 		{
@@ -268,6 +294,29 @@ namespace render
 	{
 		// clear VBlank flag
 		status-=PPUSTATUS::VBLANK;
+		// clear HIT flag
+		status-=PPUSTATUS::HIT;
+	}
+
+	static void beginFrame()
+	{
+		if (enabled())
+		{
+			// clear the back buffer at the beginning of frame
+			render::clear();
+
+			reloadVertical();
+			status|=PPUSTATUS::WRITEIGNORED;
+		}
+		
+		ui::onFrameBegin();
+	}
+
+	static void endFrame()
+	{
+		++frameNum;
+
+		ui::onFrameEnd();
 	}
 
 	static void drawBackground()
@@ -278,8 +327,7 @@ namespace render
 			int xoffset;
 			reloadHorizontal(&xoffset);
 			int startX=(address(PPUADDR::XSCROLL)<<3)+xoffset;
-			startX=frameNum%255;
-			rom::setMirrorMode(MIRRORING::SINGLESCREEN);
+			startX=frameNum%255; // for debug only
 			const int startY=(address(PPUADDR::YSCROLL)<<3)+address(PPUADDR::YOFFSET);
 
 			assert(startX>=0 && startX<256);
@@ -315,13 +363,16 @@ namespace render
 					// Note: B0 indicates the color at the 7th pixel of the tile
 					const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
 					const byte_t color = colorD0D1|colorD2D3;
-					// write to frame buffer
-					vassert(X-pixel>=0 && X-pixel<256);
-					vBuffer[scanline][X-pixel]=color;
+					if (color!=0) // non-transparent
+					{
+						// write to frame buffer
+						vassert(X-pixel>=0 && X-pixel<256);
+						vBuffer[scanline][X-pixel]=color;
+					}
 				}
 			}
 
-			if (startX>=0) // TODO: >0
+			if (startX>=0)
 			{
 				// now render for the second part
 				// switch across to the next tables
@@ -351,9 +402,12 @@ namespace render
 						// Note: B0 indicates the color at the 7th pixel of the tile
 						const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
 						const byte_t color = colorD0D1|colorD2D3;
-						// write to frame buffer
-						vassert(X-pixel>=0 && X-pixel<256);
-						vBuffer[scanline][X-pixel]=color;
+						if (color!=0) // non-transparent
+						{
+							// write to frame buffer
+							vassert(X-pixel>=0 && X-pixel<256);
+							vBuffer[scanline][X-pixel]=color;
+						}
 					}
 				}
 			}
@@ -371,11 +425,11 @@ namespace render
 		}
 	}
 
-	static void drawSprites()
+	static void drawSprites(const bool behindBG)
 	{
 		if (mask[PPUMASK::SPR_VISIBLE])
 		{
-			reloadHorizontal();
+			
 		}
 	}
 
@@ -384,26 +438,10 @@ namespace render
 		if (enabled())
 		{
 			vassert(scanline>=0 && scanline<=239);
+			drawSprites(true);
 			drawBackground();
-			drawSprites();
+			drawSprites(false);
 		}
-	}
-
-	static void beginFrame()
-	{
-		if (enabled())
-		{
-			reloadVertical();
-		}
-		
-		ui::onFrameBegin();
-	}
-
-	static void endFrame()
-	{
-		++frameNum;
-
-		ui::onFrameEnd();
 	}
 
 	static bool HBlank()
@@ -501,13 +539,6 @@ namespace render
 		pal32[62] = Rgb32(  0,  0,  0);
 		pal32[63] = Rgb32(  0,  0,  0);
 	}
-
-	static void clear()
-	{
-		// clear frame buffer
-		memset(vBuffer, 0, sizeof(vBuffer));
-		memset(vBuffer32, 0, sizeof(vBuffer32));
-	}
 }
 
 namespace ppu
@@ -536,8 +567,8 @@ namespace ppu
 		// reset bank state
 		memset(prevBankSrc, -1, sizeof(prevBankSrc));
 
-		// clear video buffer
-		render::clear();
+		// clear frame buffer
+		render::reset();
 	}
 
 	static void copyBanks(const uint8_t* vrom, const int dest, const int src, const int count)

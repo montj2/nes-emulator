@@ -1,3 +1,68 @@
+enum class PPUSTATUS {
+    VBLANK=0x80,
+    HIT=0x40,
+    COUNTGT8=0x20,
+    WRITEIGNORED=0x10
+};
+
+enum class PPUCTRL {
+    NMI_ENABLED=0x80,
+    MASTER_SLAVE=0x40,
+    LARGE_SPRITE=0x20,
+    BG_PATTERN=0x10,
+    SPRITE_PATTERN=0x8,
+    VERTICAL_WRITE=0x4,
+    CURRENT_NT=0x3
+};
+
+enum class PPUMASK {
+    EMPHASIS=0xE0,
+    INTENSITY=EMPHASIS,
+    EMPHASIS_RED=0x80,
+    EMPHASIS_GREEN=0x40,
+    EMPHASIS_BLUE=0x20,
+    SPR_VISIBLE=0x10,
+    BG_VISIBLE=0x8,
+    SPR_CLIP8=0x4,
+    BG_CLIP8=0x2,
+    MONOCHROME=0x1
+};
+
+enum class PPUADDR {
+    TILE_H=0x1F,
+    XSCROLL=TILE_H,
+    TILE_V=0x3E0,
+    YSCROLL=TILE_V,
+    NT_H=0x400,
+    NT_V=0x800,
+    NT=NT_H|NT_V,
+    NT_OFFSET=0x3FF,
+    YOFFSET=0x7000,
+	// XOFFSET is stored in reload register
+
+	FIRST_WRITE_HI=0x3000,
+	FIRST_WRITE_MID=0x0C00,
+	FIRST_WRITE_LO=0x0300,
+    HIGH_BYTE=0x3F00/*0x7F00*/,
+    LOW_BYTE=0xFF,
+
+    BANK=0x3000/*0xF000*/,
+    BANK_OFFSET=0x0FFF,
+
+	PAL_SELECT=0x10,
+	PAL_NUM=0xC,
+	PAL_ITEM=0x3
+};
+
+enum class SPRATTR : uint8_t {
+	COLOR_HI=0x3,
+	RESERVED=0x1C,
+	PRIORITY=0x20,
+	BEHIND_BG=PRIORITY,
+	FLIP_H=0x40,
+	FLIP_V=0x80
+};
+
 // Object/Sprite Attribute Memory
 struct NESOAM
 {
@@ -6,7 +71,7 @@ private:
 	{
 		uint8_t yminus1; // y coordinate - 1
 		uint8_t tile; // tile index number
-		uint8_t attrib; // attributes
+		SPRATTR attrib; // attributes
 		uint8_t x; // x coordinate
 	}sprites[64];
 
@@ -116,64 +181,8 @@ extern struct NESOAM oam;
 #define vramData(offset) vram.data(offset)
 #define oamData(offset) oam.data(offset)
 
-#define sprAttr(index) oam.sprite(index)
+#define spr(index) oam.sprite(index)
 #define colorIdx(index) vram.colorIndex(index)
-
-enum class PPUSTATUS {
-    VBLANK=0x80,
-    HIT=0x40,
-    COUNTGT8=0x20,
-    WRITEIGNORED=0x10
-};
-
-enum class PPUCTRL {
-    NMI_ENABLED=0x80,
-    MASTER_SLAVE=0x40,
-    LARGE_SPRITE=0x20,
-    BG_PATTERN=0x10,
-    SPRITE_PATTERN=0x8,
-    VERTICAL_WRITE=0x4,
-    CURRENT_NT=0x3
-};
-
-enum class PPUMASK {
-    EMPHASIS=0xE0,
-    INTENSITY=EMPHASIS,
-    EMPHASIS_RED=0x80,
-    EMPHASIS_GREEN=0x40,
-    EMPHASIS_BLUE=0x20,
-    SPR_VISIBLE=0x10,
-    BG_VISIBLE=0x8,
-    SPR_CLIP8=0x4,
-    BG_CLIP8=0x2,
-    MONOCHROME=0x1
-};
-
-enum class PPUADDR {
-    TILE_H=0x1F,
-    XSCROLL=TILE_H,
-    TILE_V=0x3E0,
-    YSCROLL=TILE_V,
-    NT_H=0x400,
-    NT_V=0x800,
-    NT=NT_H|NT_V,
-    NT_OFFSET=0x3FF,
-    YOFFSET=0x7000,
-	// XOFFSET is stored in reload register
-
-	FIRST_WRITE_HI=0x3000,
-	FIRST_WRITE_MID=0x0C00,
-	FIRST_WRITE_LO=0x0300,
-    HIGH_BYTE=0x3F00/*0x7F00*/,
-    LOW_BYTE=0xFF,
-
-    BANK=0x3000/*0xF000*/,
-    BANK_OFFSET=0x0FFF,
-
-	PAL_SELECT=0x10,
-	PAL_NUM=0xC,
-	PAL_ITEM=0x3
-};
 
 namespace ppu
 {
