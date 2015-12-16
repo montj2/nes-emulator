@@ -138,9 +138,9 @@ namespace mmc
 			case 0x4016: // Input Registers
 			case 0x4017:
 				if (ui::hasInput((addr==0x4017)?1:0))
-					return ui::readInput((addr==0x4017)?1:0)?1:0; // outputs button state
+					return ui::readInput((addr==0x4017)?1:0); // outputs button state
 				else
-					return 0x2; // joystick not connected
+					return 0; // joystick not connected
 			}
 			break;
 		case 3:
@@ -186,7 +186,7 @@ namespace mmc
 				case 0x4017:
 					if (!(value&1))
 					{
-						ui::resetInput((valueOf(addr)==0x4017)?1:0);
+						ui::resetInput();
 					}
 					return;
 				}

@@ -33,4 +33,6 @@ namespace cpu
 
 	int nextInstruction();
 	bool run(int n, long cycles);
+
+	void dump();
 }

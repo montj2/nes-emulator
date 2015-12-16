@@ -26,8 +26,7 @@ namespace ui
 		buttonMapping[0][BUTTON_RIGHT]=VK_RIGHT;
 
 		// reset input state
-		resetInput(0);
-		resetInput(1);
+		resetInput();
 	}
 
 	void blt32(const uint32_t buffer[], const int width, const int height)
@@ -54,10 +53,10 @@ namespace ui
 	{
 	}
 
-	void resetInput(const int player)
+	void resetInput()
 	{
-		vassert(player==0 || player==1);
-		joypadPosition[player]=0;
+		joypadPosition[0]=0;
+		joypadPosition[1]=0;
 	}
 
 	bool hasInput(const int player)
@@ -66,18 +65,26 @@ namespace ui
 		return player==0;
 	}
 
-	bool readInput(const int player)
+	int readInput(const int player)
 	{
-		vassert(player==0 || player==1);
 		assert(hasInput(player));
 		return readInput(player, joypadPosition[player]++);
 	}
 
-	bool readInput(const int player, const int button)
+	int readInput(const int player, const int button)
 	{
-		vassert(player==0 || player==1);
 		assert(hasInput(player));
 		assert(button>=0 && button<BUTTON_COUNT);
-		return buttonState[player%2][button%BUTTON_COUNT]!=0;
+		if (hasInput(player))
+		{
+			if (button>=BUTTON_COUNT) return true;
+			return buttonState[player%2][button%BUTTON_COUNT]?0x41:0;
+		}else
+			return false;
+	}
+
+	bool forceTerminate()
+	{
+		return GetAsyncKeyState(VK_ESCAPE)!=0;
 	}
 }

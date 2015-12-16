@@ -45,6 +45,11 @@ typedef bit_field<_reg8_t, 8> reg_bit_field_t;
 	#define STAT_ADD(VAR, INC) (void)0
 #endif
 
+// Crazy debugging
+#ifdef WANT_RUN_HIT
+	static bool instructionHit[0x8000];
+#endif
+
 namespace stack
 {
 	static inline void pushByte(const byte_t byte)
@@ -342,7 +347,7 @@ namespace arithmetic
 
 namespace cpu
 {
-	bool debugging = false;
+	static bool debugging = false;
 
 	void reset()
 	{
@@ -364,6 +369,27 @@ namespace cpu
 		interrupt::clearAll();
 		// this will set PC to the entry point
 		interrupt::request(IRQTYPE::RST);
+
+		// others
+#ifdef WANT_RUN_HIT
+		for (int i=0;i<0x8000;i++)
+			instructionHit[i]=false;
+#endif
+	}
+
+	void dump()
+	{
+#ifdef WANT_RUN_HIT
+		FILE *fp=fopen("RUNHIT.log","wt");
+		for (int i=0;i<0x8000;i++)
+		{
+			if (instructionHit[i])
+			{
+				fprintf(fp, "%X\n", i|0x8000);
+			}
+		}
+		fclose(fp);
+#endif
 	}
 
 	// emulate at most n instructions within specified cycles
@@ -787,6 +813,10 @@ jBranch:
 			assert(SP.reachMax());
 			return -1;
 		}
+
+#ifdef WANT_RUN_HIT
+		instructionHit[PC&0x7FFF]=true;
+#endif
 
 		const maddr_t opaddr = PC;
 		const opcode_t opcode = mmc::fetchOpcode(PC);

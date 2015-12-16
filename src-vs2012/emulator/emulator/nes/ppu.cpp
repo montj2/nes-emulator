@@ -122,7 +122,7 @@ namespace mem
 	{
 		if (firstWrite) // higher 2 bits
 		{
-			assert((byte&~0x3F)==0);
+			// vassert((byte&~0x3F)==0);
 			tmpAddress.update<PPUADDR::HIGH_BYTE>(byte&0x3F);
 
 			// store in Reload register temporarily

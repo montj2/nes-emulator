@@ -13,6 +13,7 @@
 #include "cpu.h"
 #include "ppu.h"
 #include "emu.h"
+#include "../ui.h"
 
 namespace emu
 {
@@ -53,7 +54,10 @@ namespace emu
 			if (cpu::run(-1,114))
 			{
 				if (!ppu::hsync())
-					break; // frame ends
+				{
+					// frame ends
+					break;
+				}
 			}
 			else
 				return false; // program stops
@@ -63,6 +67,14 @@ namespace emu
 
 	void run()
 	{
-		while (nextFrame()) {}
+		while (nextFrame())
+		{
+			if (ui::forceTerminate())
+			{
+				// user terminates the execution
+				cpu::dump();
+				break;
+			}
+		}
 	}
 }
