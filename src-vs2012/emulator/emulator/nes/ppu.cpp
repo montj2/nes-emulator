@@ -191,6 +191,7 @@ namespace render
 
 	static int8_t pendingSprites[8];
 	static int pendingSpritesCount;
+	static bool solidPixel[256];
 
 	static void setScroll(const byte_t byte)
 	{
@@ -248,7 +249,7 @@ namespace render
 		memset(vBuffer32, 0, sizeof(vBuffer32));
 
 		pendingSpritesCount = 0;
-		memset(pendingSprites, -1, sizeof(pendingSprites));
+		memset(pendingSprites, -1, sizeof(pendingSprites));	
 	}
 
 	static bool enabled()
@@ -431,7 +432,7 @@ namespace render
 			const int sprHeight=control[PPUCTRL::LARGE_SPRITE]?16:8;
 
 			pendingSpritesCount=0;
-			for (int i=0;i<64;i++)
+			for (int i=63;i>=0;i--)
 			{
 				if (oamSprite(i).yminus1<scanline && oamSprite(i).yminus1+sprHeight>=scanline)
 				{
@@ -446,6 +447,11 @@ namespace render
 					}
 				}
 			}
+
+			for (int i=0;i<256;i++)
+			{
+				solidPixel[i]=((vBuffer[scanline][i]&3)!=0);
+			}
 		}
 	}
 
@@ -453,6 +459,7 @@ namespace render
 	{
 		if (pendingSpritesCount>0)
 		{
+			const int sprWidth=8;
 			const int sprHeight=control[PPUCTRL::LARGE_SPRITE]?16:8;
 
 			for (int i=0;i<pendingSpritesCount;i++)
@@ -463,17 +470,17 @@ namespace render
 
 				// get the sprite info
 				const int sprYOffset = scanline-(spr.yminus1+1);
-				assert(sprYOffset>=0 && sprYOffset<sprHeight);
+				vassert(sprYOffset>=0 && sprYOffset<sprHeight);
 
 				const byte_t colorD2D3 = spr.attrib.select(SPRATTR::COLOR_HI)<<2;
 
-				for (int pixel=0;pixel<8;pixel++)
+				for (int pixel=0;pixel<sprWidth;pixel++)
 				{
 					const int X=spr.x+pixel;
-					if (X<(mask[PPUMASK::SPR_CLIP8]?8:0) || X>=256) continue;
+					if (X<0 || X>=256) continue;
 
 					const NESVRAM::VROM::PATTERN_TABLE *pt;
-					const int tileXOffset=spr.attrib[SPRATTR::FLIP_H]?(7-pixel):pixel;
+					const int tileXOffset=spr.attrib[SPRATTR::FLIP_H]?(sprWidth-1-pixel):pixel;
 					const int tileYOffset=(spr.attrib[SPRATTR::FLIP_V]?(sprHeight-1-sprYOffset):sprYOffset)&7;
 					tileid_t tileIndex;
 					if (control[PPUCTRL::LARGE_SPRITE])
@@ -497,19 +504,20 @@ namespace render
 					if ((color&3)!=0) // opaque pixel
 					{
 						// sprite 0 hit detection (regardless priority)
-						if (sprId==0 && mask[PPUMASK::BG_VISIBLE] && vBuffer[scanline][X]!=0)
+						if (sprId==0 && mask[PPUMASK::BG_VISIBLE] && solidPixel[X] && X!=255)
 						{
+							// background is non-transparent here
 							status|=PPUSTATUS::HIT;
 						}
 						// write to frame buffer
 						if (!behindBG)
 						{
+							// always overwite for front-priority sprites
 							vBuffer[scanline][X]=color;
 						}else
 						{
-							// TODO: in reverse order
-							// only write when the background pixel is transparent
-							if (!mask[PPUMASK::BG_VISIBLE] || vBuffer[scanline][X]==0)
+							// only write when the corresponding background pixel is transparent
+							if ((vBuffer[scanline][X]&3)==0)
 							{
 								vBuffer[scanline][X]=color;
 							}
@@ -525,8 +533,8 @@ namespace render
 		if (enabled())
 		{
 			vassert(scanline>=0 && scanline<=239);
-			evaluateSprites();
 			drawBackground();
+			evaluateSprites();
 			drawSprites(false); // front-priority sprites first
 			drawSprites(true);
 		}
@@ -534,7 +542,6 @@ namespace render
 
 	static bool HBlank()
 	{
-		printf("[ ] ------ Scanline %d ------\n",scanline);
 		if (scanline==-1)
 		{
 			beginFrame();

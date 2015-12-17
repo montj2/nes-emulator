@@ -107,6 +107,9 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;FAST_TYPE;ALLOW_ADDRESS_WRAP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CallingConvention>FastCall</CallingConvention>
       <DisableSpecificWarnings>4146;4530</DisableSpecificWarnings>
+      <ExceptionHandling>false</ExceptionHandling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

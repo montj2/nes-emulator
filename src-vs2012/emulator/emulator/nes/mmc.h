@@ -40,6 +40,7 @@ public:
 
 	inline uint8_t* page(const size_t num)
 	{
+		vassert(num<0x8 || num>=0x60);
 		return &((uint8_t*)this)[num<<8];
 	}
 };

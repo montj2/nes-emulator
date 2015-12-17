@@ -9,9 +9,15 @@
 
 namespace ui
 {
+	// controller state
+	static bool joypadPresent[2] = {false};
 	static unsigned joypadPosition[2];
 	static int buttonState[2][BUTTON_COUNT];
 	static int buttonMapping[2][BUTTON_COUNT];
+
+	// render state
+	static const int MAX_FPS = 60;
+	static ULONGLONG frameStartTime;
 
 	void init()
 	{
@@ -24,6 +30,7 @@ namespace ui
 		buttonMapping[0][BUTTON_DOWN]=VK_DOWN;
 		buttonMapping[0][BUTTON_LEFT]=VK_LEFT;
 		buttonMapping[0][BUTTON_RIGHT]=VK_RIGHT;
+		joypadPresent[0]=true;
 
 		// reset input state
 		resetInput();
@@ -43,14 +50,35 @@ namespace ui
 
 	void onFrameBegin()
 	{
-		// read keyboard state
-		for (int p=0;p<2;p++)
-			for (int i=0;i<BUTTON_COUNT;i++)
-				buttonState[p][i]=GetAsyncKeyState(buttonMapping[p][i]);
+		frameStartTime=GetTickCount64();
 	}
 
 	void onFrameEnd()
 	{
+	}
+
+	void doEvents()
+	{
+		// read keyboard state
+		for (int p=0;p<2;p++)
+		{
+			if (hasInput(p))
+			{
+				for (int i=0;i<BUTTON_COUNT;i++)
+				{
+					buttonState[p][i]=GetAsyncKeyState(buttonMapping[p][i]);
+				}
+			}
+		}
+	}
+
+	void waitForVSync()
+	{
+		long long msToWait = 1000/MAX_FPS-(GetTickCount64()-frameStartTime);
+		if (msToWait>0 && msToWait<1000)
+		{
+			Sleep(msToWait);
+		}
 	}
 
 	void resetInput()
@@ -62,7 +90,7 @@ namespace ui
 	bool hasInput(const int player)
 	{
 		vassert(player==0 || player==1);
-		return player==0;
+		return joypadPresent[player];
 	}
 
 	int readInput(const int player)

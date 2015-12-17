@@ -215,7 +215,7 @@ public:
 		puts("checking RAM struture...");
 		tassert(sizeof(ram)==0x10000);
 		tassert(ptr_diff(&ram.bank6[0],&ramData(0))==0x6000);
-		tassert(ptr_diff(ram.page(0x20),&ramData(0))==0x2000);
+		tassert(ptr_diff(ram.page(0x80),&ramData(0))==0x8000);
 
 		printf("[ ] System memory at 0x%p\n", &ram);
 		return SUCCESS;

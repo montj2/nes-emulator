@@ -22,7 +22,10 @@ namespace ui
 
 	bool forceTerminate();
 
+	void waitForVSync();
+
 	// global events
 	void onFrameBegin();
 	void onFrameEnd();
+	void doEvents();
 }
