@@ -25,8 +25,8 @@ namespace ui
 	void init()
 	{
 		// default keyboard settings
-		buttonMapping[0][BUTTON_A]='Z';
-		buttonMapping[0][BUTTON_B]='X';
+		buttonMapping[0][BUTTON_A]='X';
+		buttonMapping[0][BUTTON_B]='Z';
 		buttonMapping[0][BUTTON_SELECT]=VK_LSHIFT;
 		buttonMapping[0][BUTTON_START]=VK_RETURN;
 		buttonMapping[0][BUTTON_UP]=VK_UP;
