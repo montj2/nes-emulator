@@ -33,7 +33,7 @@ namespace emu
 		return rom::load(file);
 	}
 
-	void setup()
+	void reset()
 	{
 		// setup mmc
 		mmc::reset();
@@ -68,15 +68,25 @@ namespace emu
 
 	void run()
 	{
-		while (nextFrame())
+		for (;;)
 		{
+			ui::doEvents();
 			if (ui::forceTerminate())
 			{
 				// create state dump on force termination
 				cpu::dump();
 				break;
 			}
-			ui::doEvents();
+			if (ui::forceReset())
+			{
+				// asked by user
+				reset();
+			}
+			if (!nextFrame())
+			{
+				// game stops
+				break;
+			}
 			ui::waitForVSync();
 		}
 	}

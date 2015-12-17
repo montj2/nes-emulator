@@ -37,7 +37,7 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 		if (emu::load(argv[1]))
 		{
 			// setup modules
-			emu::setup();
+			emu::reset();
 
 			// create log file
 			FILE *fp = fopen("m:\\log.txt", "wt");

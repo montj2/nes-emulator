@@ -5,7 +5,7 @@ namespace emu
 	void deinit();
 
 	bool load(const _TCHAR* file);
-	void setup();
+	void reset();
 
 	bool nextFrame();
 	void run();

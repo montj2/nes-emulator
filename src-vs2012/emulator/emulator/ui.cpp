@@ -9,6 +9,9 @@
 
 namespace ui
 {
+	static bool quitRequired = false;
+	static bool resetRequired = false;
+
 	// controller state
 	static bool joypadPresent[2] = {false};
 	static unsigned joypadPosition[2];
@@ -89,6 +92,18 @@ namespace ui
 				}
 			}
 		}
+
+		if (GetAsyncKeyState(VK_ESCAPE)!=0)
+		{
+			if (GetAsyncKeyState(VK_CONTROL)!=0)
+				quitRequired=true;
+			else
+				resetRequired=true;
+		}else
+		{
+			quitRequired=false;
+			resetRequired=false;
+		}
 	}
 
 	void waitForVSync()
@@ -130,8 +145,13 @@ namespace ui
 			return false;
 	}
 
+	bool forceReset()
+	{
+		return resetRequired;
+	}
+
 	bool forceTerminate()
 	{
-		return GetAsyncKeyState(VK_ESCAPE)!=0;
+		return quitRequired;
 	}
 }
