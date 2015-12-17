@@ -84,7 +84,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;WANT_STATISTICS;ALLOW_ADDRESS_WRAP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;WANT_STATISTICS;ALLOW_ADDRESS_WRAP;WANT_RUN_HIT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CallingConvention>FastCall</CallingConvention>
       <ExceptionHandling>false</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
