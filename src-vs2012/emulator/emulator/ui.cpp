@@ -66,7 +66,26 @@ namespace ui
 			{
 				for (int i=0;i<BUTTON_COUNT;i++)
 				{
-					buttonState[p][i]=GetAsyncKeyState(buttonMapping[p][i]);
+					const SHORT ret=GetAsyncKeyState(buttonMapping[p][i]);
+					if (ret&0x8000)
+					{
+						buttonState[p][i]=0x41;
+						switch (i)
+						{
+						case BUTTON_RIGHT:
+							buttonState[p][BUTTON_LEFT]=0;
+							break;
+						case BUTTON_DOWN:
+							buttonState[p][BUTTON_UP]=0;
+							break;
+						}
+					}else if (ret&1)
+					{
+						buttonState[p][i]=0x40;
+					}else
+					{
+						buttonState[p][i]=0;
+					}
 				}
 			}
 		}
@@ -106,7 +125,7 @@ namespace ui
 		if (hasInput(player))
 		{
 			if (button>=BUTTON_COUNT) return true;
-			return buttonState[player%2][button%BUTTON_COUNT]?0x41:0;
+			return buttonState[player%2][button%BUTTON_COUNT];
 		}else
 			return false;
 	}
