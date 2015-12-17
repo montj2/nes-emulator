@@ -190,8 +190,8 @@ namespace ppu
 	void init();
 	void reset();
 
-	void bankSwitch(const uint8_t* vrom, const int dest, const int src, const int count);
-	bool setup(int mapper_type, const uint8_t* vrom, const size_t vrom_size);
+	void bankSwitch(const int dest, const int src, const int count);
+	bool setup();
 
 	bool readPort(const maddr_t maddress, byte_t& data);
 	bool writePort(const maddr_t maddress, const byte_t data);

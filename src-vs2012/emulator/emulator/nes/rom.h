@@ -32,8 +32,10 @@ namespace rom
 	void setMirrorMode(MIRRORING newMode);
 
 	const char* getImage();
-	const char* getVROM();
-
+	int countPRG();
 	size_t sizeOfImage();
+
+	const char* getVROM();
+	int countCHR();
 	size_t sizeOfVROM();
 }

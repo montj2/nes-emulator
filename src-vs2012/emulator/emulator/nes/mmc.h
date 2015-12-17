@@ -25,10 +25,10 @@ public:
 	// $6000 SaveRAM
     uint8_t bank6[8192];
 
-	// $8000 PRG-ROM
+	// $8000 PRG-ROM (8K per bank, 4 built-in banks)
     uint8_t bank8[8192], bankA[8192];
 
-	// $C000 Mirror of PRG-ROM
+	// $C000 Can be mirror of PRG-ROM at $8000
     uint8_t bankC[8192], bankE[8192];
 
 public:
@@ -56,8 +56,8 @@ namespace mmc
 	// global functions
 	void reset();
 
-	void bankSwitch(int reg8, int regA, int regC, int regE, const uint8_t* image);
-	bool setup(int mapper_type, const uint8_t* image, const size_t image_size);
+	void bankSwitch(int reg8, int regA, int regC, int regE);
+	bool setup();
 
 	extern __forceinline opcode_t fetchOpcode(maddr_t& pc);
 	extern __forceinline maddr8_t fetchByteOperand(maddr_t& pc);
@@ -67,4 +67,12 @@ namespace mmc
 
 	byte_t read(const maddr_t addr);
 	void write(const maddr_t addr, const byte_t value);
+}
+
+namespace mapper
+{
+	bool write(const maddr_t addr, const byte_t value);
+
+	byte_t maskPRG(byte_t bank, const byte_t count);
+	byte_t maskCHR(byte_t bank, const byte_t count);
 }

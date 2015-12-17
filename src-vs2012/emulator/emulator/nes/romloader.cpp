@@ -53,8 +53,8 @@ namespace rom
 		fread(&romCtrl2,1,1,fp);
 		fread(&reserved,8,1,fp);
 
-		printf("[ ] %u ROM Banks\n", prgCount);
-		printf("[ ] %u CHR Banks\n", chrCount);
+		printf("[ ] %u 16K ROM Banks\n", prgCount);
+		printf("[ ] %u 8K CHR Banks\n", chrCount);
 		printf("[ ] %u ROM Control Byte #1\n", romCtrl);
 		printf("[ ] %u ROM Control Byte #2\n", romCtrl2);
 
@@ -144,8 +144,18 @@ namespace rom
 		return imageSize;
 	}
 
+	int countPRG()
+	{
+		return prgCount;
+	}
+
 	size_t sizeOfVROM()
 	{
 		return vromSize;
+	}
+
+	int countCHR()
+	{
+		return chrCount;
 	}
 }

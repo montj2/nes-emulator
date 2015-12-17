@@ -666,30 +666,34 @@ namespace ppu
 		render::reset();
 	}
 
-	static void copyBanks(const uint8_t* vrom, const int dest, const int src, const int count)
+	static void copyBanks(const int dest, const int src, const int count)
 	{
-		memcpy(&vramData(dest*0x400), &vrom[src*0x400], count*0x400);
+		assert((dest+count)*0x400<=0x2000);
+		assert((src+count)*0x400<=(int)rom::sizeOfVROM());
+		memcpy(&vramData(dest*0x400), rom::getVROM()+src*0x400, count*0x400);
 	}
 
-	void bankSwitch(const uint8_t* vrom, const int dest, const int src, const int count)
+	void bankSwitch(const int dest, const int src, const int count)
 	{
 		for (int i=0; i<count; i++)
 		{
 			if (prevBankSrc[dest+i]!=src+i)
 			{
 				prevBankSrc[dest+i]=src+i;
-				copyBanks(vrom, dest+i, src+i, 1);
+				copyBanks(dest+i, src+i, 1);
 			}
 		}
 	}
 
-	bool setup(int mapper_type, const uint8_t* vrom, const size_t vrom_size)
+	bool setup()
 	{
-		switch (mapper_type)
+		switch (rom::mapperType())
 		{
 		case 0: // no mapper
-			if (vrom_size == 0x2000) // 8K of texture
-				bankSwitch(vrom, 0, 0, 8);
+		case 2: // Mapper 2: UNROM - PRG/16K
+		case 3: // Mapper 3: CNROM - VROM/8K
+			if (rom::sizeOfVROM()>=0x2000) // 8K of texture or more
+				bankSwitch(0, 0, 8);
 			else
 			{
 				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE);

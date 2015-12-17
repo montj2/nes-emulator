@@ -37,14 +37,14 @@ namespace emu
 	{
 		// setup mmc
 		mmc::reset();
-		mmc::setup(rom::mapperType(), (const uint8_t*)rom::getImage(), rom::sizeOfImage());
+		mmc::setup();
 
 		// setup cpu
 		cpu::reset();
 
 		// setup ppu
 		ppu::reset();
-		ppu::setup(rom::mapperType(), (const uint8_t*)rom::getVROM(), rom::sizeOfVROM());
+		ppu::setup();
 	}
 
 	bool nextFrame()
