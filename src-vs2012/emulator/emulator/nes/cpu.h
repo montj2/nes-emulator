@@ -34,5 +34,10 @@ namespace cpu
 	int nextInstruction();
 	bool run(int n, long cycles);
 
+	// debug
 	void dump();
+	
+	// save state
+	void save(FILE *fp);
+	void load(FILE *fp);
 }

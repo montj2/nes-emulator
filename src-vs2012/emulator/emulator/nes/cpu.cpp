@@ -33,6 +33,9 @@ typedef bit_field<_reg8_t, 8> reg_bit_field_t;
 #define M fast_cast(value, operandb_t)
 #define SUM fast_cast(temp, alu_t)
 
+// Interrupts
+static flag_set<_reg8_t, IRQTYPE, 8> pendingIRQs;
+
 // Run-time statistics
 #ifdef WANT_STATISTICS
 	static long long totInstructions;
@@ -155,8 +158,6 @@ namespace interrupt
 	static const maddr_t VECTOR_NMI(0xFFFA);
 	static const maddr_t VECTOR_RESET(0xFFFC);
 	static const maddr_t VECTOR_IRQ(0xFFFE);
-
-	static flag_set<_reg8_t, IRQTYPE, 8> pendingIRQs;
 
 	static void clearAll()
 	{
@@ -375,6 +376,30 @@ namespace cpu
 		for (int i=0;i<0x8000;i++)
 			instructionHit[i]=false;
 #endif
+	}
+
+	void save(FILE *fp)
+	{
+		// registers
+		fwrite(&A, sizeof(A), 1, fp);
+		fwrite(&X, sizeof(X), 1, fp);
+		fwrite(&Y, sizeof(Y), 1, fp);
+		fwrite(&SP, sizeof(SP), 1, fp);
+		fwrite(&P, sizeof(P), 1, fp);
+		fwrite(&PC, sizeof(PC), 1, fp);
+		fwrite(&pendingIRQs, sizeof(pendingIRQs), 1, fp);
+	}
+	
+	void load(FILE *fp)
+	{
+		// registers
+		fread(&A, sizeof(A), 1, fp);
+		fread(&X, sizeof(X), 1, fp);
+		fread(&Y, sizeof(Y), 1, fp);
+		fread(&SP, sizeof(SP), 1, fp);
+		fread(&P, sizeof(P), 1, fp);
+		fread(&PC, sizeof(PC), 1, fp);
+		fread(&pendingIRQs, sizeof(pendingIRQs), 1, fp);
 	}
 
 	void dump()

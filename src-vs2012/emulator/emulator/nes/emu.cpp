@@ -77,11 +77,6 @@ namespace emu
 				cpu::dump();
 				break;
 			}
-			if (ui::forceReset())
-			{
-				// asked by user
-				reset();
-			}
 			if (!nextFrame())
 			{
 				// game stops
@@ -89,5 +84,21 @@ namespace emu
 			}
 			ui::waitForVSync();
 		}
+	}
+
+	void saveState(FILE *fp)
+	{
+		mmc::save(fp);
+		cpu::save(fp);
+		ppu::save(fp);
+	}
+
+	void loadState(FILE *fp)
+	{
+		reset(); // necessary
+
+		mmc::load(fp);
+		cpu::load(fp);
+		ppu::load(fp);
 	}
 }

@@ -21,7 +21,6 @@ namespace ui
 	int readInput(const int player, const int button);
 
 	bool forceTerminate();
-	bool forceReset();
 
 	void waitForVSync();
 

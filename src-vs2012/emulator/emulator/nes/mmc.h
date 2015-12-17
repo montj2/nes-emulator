@@ -25,11 +25,19 @@ public:
 	// $6000 SaveRAM
     uint8_t bank6[8192];
 
-	// $8000 PRG-ROM (8K per bank, 4 built-in banks)
-    uint8_t bank8[8192], bankA[8192];
+	union
+	{
+		uint8_t code[0x8000];
 
-	// $C000 Can be mirror of PRG-ROM at $8000
-    uint8_t bankC[8192], bankE[8192];
+		struct
+		{
+			// $8000 PRG-ROM (8K per bank, 4 built-in banks)
+			uint8_t bank8[8192], bankA[8192];
+
+			// $C000 Can be mirror of PRG-ROM at $8000
+			uint8_t bankC[8192], bankE[8192];
+		};
+	};
 
 public:
 	inline uint8_t& data(const size_t ptr)
@@ -67,6 +75,10 @@ namespace mmc
 
 	byte_t read(const maddr_t addr);
 	void write(const maddr_t addr, const byte_t value);
+
+	// save state
+	void save(FILE *fp);
+	void load(FILE *fp);
 }
 
 namespace mapper

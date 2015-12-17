@@ -202,4 +202,8 @@ namespace ppu
 
 	int currentScanline();
 	long long currentFrame();
+
+	// save state
+	void save(FILE *fp);
+	void load(FILE *fp);
 }

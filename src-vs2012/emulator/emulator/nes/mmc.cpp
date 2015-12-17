@@ -80,6 +80,32 @@ namespace mmc
 		memset(&ram,0,sizeof(ram));
 	}
 
+	void save(FILE *fp)
+	{
+		// bank-switching state
+		fwrite(&p8, sizeof(p8), 1, fp);
+		fwrite(&pA, sizeof(pA), 1, fp);
+		fwrite(&pC, sizeof(pC), 1, fp);
+		fwrite(&pE, sizeof(pE), 1, fp);
+
+		// code&data in memory
+		fwrite(ram.bank0, sizeof(ram.bank0), 1, fp);
+		fwrite(ram.code, sizeof(ram.code), 1, fp);
+	}
+	
+	void load(FILE *fp)
+	{
+		// bank-switching state
+		fread(&p8, sizeof(p8), 1, fp);
+		fread(&pA, sizeof(pA), 1, fp);
+		fread(&pC, sizeof(pC), 1, fp);
+		fread(&pE, sizeof(pE), 1, fp);
+
+		// code&data in memory
+		fread(ram.bank0, sizeof(ram.bank0), 1, fp);
+		fread(ram.code, sizeof(ram.code), 1, fp);
+	}
+
 	opcode_t fetchOpcode(maddr_t& pc)
 	{
 		opcode_t opcode;
@@ -288,6 +314,7 @@ namespace mapper
 			return true;
 		}
 		ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "addr", valueOf(addr), "value", value);
+		return false;
 	}
 }
 

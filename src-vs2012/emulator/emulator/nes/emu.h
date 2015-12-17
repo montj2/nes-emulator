@@ -9,4 +9,8 @@ namespace emu
 
 	bool nextFrame();
 	void run();
+
+	// save state
+	void saveState(FILE *fp);
+	void loadState(FILE *fp);
 }

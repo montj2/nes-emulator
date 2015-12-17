@@ -3,6 +3,7 @@
 // local header files
 #include "macros.h"
 
+#include "nes/emu.h"
 #include "ui.h"
 
 #include <Windows.h>
@@ -93,16 +94,49 @@ namespace ui
 			}
 		}
 
+		// hotkeys
 		if (GetAsyncKeyState(VK_ESCAPE)!=0)
 		{
 			if (GetAsyncKeyState(VK_CONTROL)!=0)
+			{
 				quitRequired=true;
+			}
 			else
-				resetRequired=true;
+			{
+				emu::reset();
+			}
 		}else
 		{
 			quitRequired=false;
-			resetRequired=false;
+		}
+
+		static int lastState;
+		if (lastState==0)
+		{
+			if (GetAsyncKeyState('S'))
+			{
+				lastState=1;
+				puts("Save State");
+				FILE *fp=fopen("default.sav","wb");
+				emu::saveState(fp);
+				fclose(fp);
+			}else if (GetAsyncKeyState('L'))
+			{
+				lastState=2;
+				puts("Load State");
+				FILE *fp=fopen("default.sav","rb");
+				if (fp!=nullptr)
+				{
+					emu::loadState(fp);
+					fclose(fp);
+				}else
+				{
+					puts("state not found");
+				}
+			}
+		}else if (!GetAsyncKeyState('S') && !GetAsyncKeyState('L'))
+		{
+			lastState=0;
 		}
 	}
 
@@ -111,7 +145,7 @@ namespace ui
 		long long msToWait = 1000/MAX_FPS-(GetTickCount64()-frameStartTime);
 		if (msToWait>0 && msToWait<1000)
 		{
-			Sleep(msToWait);
+			Sleep((int)msToWait);
 		}
 	}
 

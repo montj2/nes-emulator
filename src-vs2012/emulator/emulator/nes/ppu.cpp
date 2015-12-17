@@ -29,7 +29,6 @@ static flag_set<_reg8_t, PPUSTATUS, 8> status; // $2002
 
 // PPU SPR-RAM Access Registers
 static saddr_t oamAddr; // $2003
-static byte_t oamData; // $2004
 
 // PPU VRAM Access Registers
 typedef flag_set<_addr15_t, PPUADDR, 15> scroll_flag_t;
@@ -204,6 +203,7 @@ namespace render
 		{
 			// set vertical scroll
 			scroll.update<PPUADDR::YOFFSET>(byte&7);
+			assert((byte>>3)<30);
 			scroll.update<PPUADDR::YSCROLL>(byte>>3);
 		}
 		firstWrite=!firstWrite;
@@ -467,6 +467,7 @@ namespace render
 				const int sprId = pendingSprites[i];
 				const auto spr = oamSprite(sprId);
 				if (spr.attrib[SPRATTR::BEHIND_BG]!=behindBG) continue;
+				if (mask[PPUMASK::SPR_CLIP8] && spr.x<8) continue; // clip sprites when needed
 
 				// get the sprite info
 				const int sprYOffset = scanline-(spr.yminus1+1);
@@ -477,7 +478,7 @@ namespace render
 				for (int pixel=0;pixel<sprWidth;pixel++)
 				{
 					const int X=spr.x+pixel;
-					if (X<0 || X>=256) continue;
+					if (X>=256) break;
 
 					const NESVRAM::VROM::PATTERN_TABLE *pt;
 					const int tileXOffset=spr.attrib[SPRATTR::FLIP_H]?(sprWidth-1-pixel):pixel;
@@ -524,6 +525,7 @@ namespace render
 						}
 					}
 				}
+				if (sprId==0 && sprYOffset+1==sprHeight) status|=PPUSTATUS::HIT;
 			}
 		}
 	}
@@ -664,6 +666,52 @@ namespace ppu
 
 		// clear frame buffer
 		render::reset();
+	}
+
+	void save(FILE *fp)
+	{
+		// memory
+		fwrite(&vram, sizeof(vram), 1, fp);
+		fwrite(&oam, sizeof(oam), 1, fp);
+
+		// bank-switching state
+		fwrite(prevBankSrc, sizeof(prevBankSrc), 1, fp);
+
+		// registers
+		fwrite(&control, sizeof(control), 1, fp);
+		fwrite(&mask, sizeof(mask), 1, fp);
+		fwrite(&status, sizeof(status), 1, fp);
+
+		fwrite(&scroll, sizeof(scroll), 1, fp);
+		fwrite(&xoffset, sizeof(xoffset), 1, fp);
+		fwrite(&address, sizeof(address), 1, fp);
+
+		fwrite(&oamAddr, sizeof(oamAddr), 1, fp);
+		fwrite(&firstWrite, sizeof(firstWrite), 1, fp);
+		fwrite(&latch, sizeof(latch), 1, fp);
+	}
+
+	void load(FILE *fp)
+	{
+		// memory
+		fread(&vram, sizeof(vram), 1, fp);
+		fread(&oam, sizeof(oam), 1, fp);
+
+		// bank-switching state
+		fread(prevBankSrc, sizeof(prevBankSrc), 1, fp);
+
+		// registers
+		fread(&control, sizeof(control), 1, fp);
+		fread(&mask, sizeof(mask), 1, fp);
+		fread(&status, sizeof(status), 1, fp);
+
+		fread(&scroll, sizeof(scroll), 1, fp);
+		fread(&xoffset, sizeof(xoffset), 1, fp);
+		fread(&address, sizeof(address), 1, fp);
+
+		fread(&oamAddr, sizeof(oamAddr), 1, fp);
+		fread(&firstWrite, sizeof(firstWrite), 1, fp);
+		fread(&latch, sizeof(latch), 1, fp);
 	}
 
 	static void copyBanks(const int dest, const int src, const int count)
