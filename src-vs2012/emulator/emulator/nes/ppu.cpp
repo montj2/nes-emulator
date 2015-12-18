@@ -186,12 +186,18 @@ namespace mem
 namespace render
 {
 	const int SCREEN_WIDTH=256;
+#ifdef SHOW_240_LINES
 	const int SCREEN_HEIGHT=240;
-	const int RENDER_XOFFSET=8;
-	const int RENDER_WIDTH=SCREEN_WIDTH+16;
+	const int SCREEN_YOFFSET=0;
+#else
+	const int SCREEN_HEIGHT=224;
+	const int SCREEN_YOFFSET=8;
+#endif
+	const int RENDER_WIDTH=256;
+	const int RENDER_HEIGHT=240;
 
 	static rgb32_t pal32[64];
-	static palindex_t vBuffer[SCREEN_HEIGHT][RENDER_WIDTH];
+	static palindex_t vBuffer[RENDER_HEIGHT][RENDER_WIDTH];
 	static rgb32_t vBuffer32[SCREEN_HEIGHT*SCREEN_WIDTH];
 
 	static int8_t pendingSprites[8];
@@ -273,13 +279,10 @@ namespace render
 
 			// look up each pixel
 			rgb32_t* vBuf32=vBuffer32;
-			for (int y=0;y<SCREEN_HEIGHT;y++)
+			const palindex_t* vBufIdx=&vBuffer[SCREEN_YOFFSET][0];
+			for (int i=0;i<SCREEN_HEIGHT*SCREEN_WIDTH;i++)
 			{
-				const palindex_t* vBufIdx=&vBuffer[y][RENDER_XOFFSET];
-				for (int x=0;x<SCREEN_WIDTH;x++)
-				{
-					*vBuf32++=p32[valueOf(*vBufIdx++)];
-				}
+				*vBuf32++=p32[valueOf(*vBufIdx++)];
 			}
 		}
 		
@@ -363,7 +366,7 @@ namespace render
 			for (int tileCounter=(startX>>3);tileCounter<=31;tileCounter++)
 			{
 				const tileid_t tileIndex(nt->tiles[tileRow][tileCounter]);
-				const int X = (tileCounter<<3)+7-startX+RENDER_XOFFSET;
+				const int X = (tileCounter<<3)+7-startX;
 
 				// look up the tile in attribute table to find its color (D2 and D3)
 				const byte_t colorD2D3 = attr->lookup(tileRow, tileCounter);
@@ -414,8 +417,8 @@ namespace render
 						const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
 						const byte_t color = colorD0D1|colorD2D3;
 						// write to frame buffer
-						vassert(X-pixel>=0 && X-pixel<SCREEN_WIDTH);
-						vBuffer[scanline][X+RENDER_XOFFSET-pixel]=color;
+						vassert(X-pixel>=0 && X-pixel<RENDER_WIDTH);
+						vBuffer[scanline][X-pixel]=color;
 					}
 				}
 			}
@@ -447,7 +450,7 @@ namespace render
 			{
 				if (oamSprite(i).yminus1<scanline && oamSprite(i).yminus1+sprHeight>=scanline)
 				{
-#ifndef NO_LIMIT_SPRITES
+#ifndef NO_SPRITE_LIMIT
 					if (pendingSpritesCount>=8)
 					{
 						// more than 8 sprites appear in this scanline
@@ -491,7 +494,7 @@ namespace render
 					pixel<sprWidth;
 					pixel++)
 				{
-					const int X=spr.x+pixel+RENDER_XOFFSET;
+					const int X=spr.x+pixel;
 
 					const NESVRAM::VROM::PATTERN_TABLE *pt;
 					const int tileXOffset=spr.attrib[SPRATTR::FLIP_H]?(sprWidth-1-pixel):pixel;
@@ -518,7 +521,7 @@ namespace render
 					if ((color&3)!=0) // opaque pixel
 					{
 						// sprite 0 hit detection (regardless priority)
-						if (sprId==0 && mask[PPUMASK::BG_VISIBLE] && solidPixel[X] && X>=RENDER_XOFFSET && X<RENDER_XOFFSET+SCREEN_WIDTH-1)
+						if (sprId==0 && mask[PPUMASK::BG_VISIBLE] && solidPixel[X] && X<RENDER_WIDTH-1)
 						{
 							// background is non-transparent here
 							status|=PPUSTATUS::HIT;

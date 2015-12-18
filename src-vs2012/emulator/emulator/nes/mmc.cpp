@@ -112,7 +112,7 @@ namespace mmc
 #ifdef WANT_MEM_PROTECTION
 		// check if address in code section [$8000, $FFFF]
 		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "PC", valueOf(pc));
-		opcode = ram.bank8[pc^0x8000];
+		opcode = ram.bank8[pc-0x8000];
 #else
 		WARN_IF(!MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "PC", valueOf(pc));
 		opcode = ram.data(pc);
@@ -125,7 +125,7 @@ namespace mmc
 	{
 		operandb_t operand;
 #ifdef WANT_MEM_PROTECTION
-		operand(ram.bank8[pc^0x8000]);
+		operand(ram.bank8[pc-0x8000]);
 #else
 		operand(ram.data(pc));
 #endif
@@ -138,7 +138,7 @@ namespace mmc
 		operandw_t operand;
 		FATAL_ERROR_IF(pc.reachMax(), INVALID_MEMORY_ACCESS, ILLEGAL_ADDRESS_WARP);
 #ifdef WANT_MEM_PROTECTION
-		operand(*(uint16_t*)&ram.bank8[pc^0x8000]);
+		operand(*(uint16_t*)&ram.bank8[pc-0x8000]);
 #else
 		operand(makeWord(ram.data(pc), ram.data(pc+1)));
 #endif
@@ -193,7 +193,7 @@ namespace mmc
 		case 5:
 		case 6:
 		case 7:
-			return ram.bank8[addr^0x8000];
+			return ram.bank8[addr-0x8000];
 		}
 		ERROR(INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_READ, "addr", valueOf(addr));
 		return ret;
@@ -282,7 +282,7 @@ namespace mapper
 
 	static void select16KROM(const byte_t value)
 	{
-		mmc::bankSwitch((value<<1), (value<<1)+1, -1, -1);
+		mmc::bankSwitch((value<<1), (value<<1)+1, INVALID, INVALID);
 	}
 
 	template <int CHRSize>
