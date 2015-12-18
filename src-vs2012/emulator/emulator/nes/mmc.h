@@ -65,7 +65,6 @@ namespace mmc
 	void reset();
 
 	void bankSwitch(int reg8, int regA, int regC, int regE);
-	bool setup();
 
 	extern __forceinline opcode_t fetchOpcode(maddr_t& pc);
 	extern __forceinline maddr8_t fetchByteOperand(maddr_t& pc);
@@ -83,8 +82,24 @@ namespace mmc
 
 namespace mapper
 {
+	// global functions
+	void reset();
+	bool setup();
+
 	bool write(const maddr_t addr, const byte_t value);
 
 	byte_t maskPRG(byte_t bank, const byte_t count);
-	byte_t maskCHR(byte_t bank, const byte_t count);
+
+	// save state
+	void save(FILE *fp);
+	void load(FILE *fp);
 }
+
+enum class MMC1REG
+{
+	NT_MIRRORING=0x3,
+	PRG_SWITCH_MODE=0xC,
+	VROM_SWITCH_MODE=0x10,
+
+	MASK=0x1F
+};

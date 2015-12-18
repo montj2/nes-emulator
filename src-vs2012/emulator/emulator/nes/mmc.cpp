@@ -17,16 +17,16 @@
 __declspec(align(0x1000))
 struct NESRAM ram;
 
-// addresses of currently selected prg-rom banks.
-static int p8, pA, pC, pE;
-
 namespace mmc
 {
+	// addresses of currently selected prg-rom banks.
+	static int p8, pA, pC, pE;
+
 	static void updateBank(uint8_t * const dest, int& prev, int current)
 	{
 		// first mask bank the address
-		current = mapper::maskPRG(current, rom::countPRG()*2);
-		assert(current<rom::countPRG()*2);
+		current = mapper::maskPRG(current, rom::count8KPRG());
+		assert(current<rom::count8KPRG());
 
 		if (current!=prev)
 		{
@@ -43,30 +43,6 @@ namespace mmc
 		if (regA!=INVALID) updateBank(ram.bankA, pA, regA);
 		if (regC!=INVALID) updateBank(ram.bankC, pC, regC);
 		if (regE!=INVALID) updateBank(ram.bankE, pE, regE);
-	}
-
-	bool setup()
-	{
-		switch (rom::mapperType())
-		{
-		case 0: // no mapper
-		case 1: // Mapper 1: MMC1
-		case 2: // Mapper 2: UNROM - PRG/16K
-		case 3: // Mapper 3: CNROM - VROM/8K
-			if (rom::sizeOfImage() >= 0x8000) // 32K of code or more
-				bankSwitch(0, 1, 2, 3);
-			else if (rom::sizeOfImage() == 0x4000) // 16K of code
-				bankSwitch(0, 1, 0, 1);
-			else
-			{
-				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE);
-				return false;
-			}
-			return true;
-		}
-		// unknown mapper
-		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE, "mapper", rom::mapperType());
-		return false;
 	}
 
 	void reset()
@@ -250,6 +226,58 @@ namespace mmc
 
 namespace mapper
 {
+	// MMC1 registers
+	static ioreg_t m1Pos;
+	static flag_set<ioreg_t, MMC1REG> m1Reg[4];
+
+	void reset()
+	{
+		// MMC1
+		m1Pos=0;
+		for (int i=0; i<4; i++)
+			m1Reg[i].clearAll();
+
+	}
+
+	void load(FILE* fp)
+	{
+	}
+
+	void save(FILE* fp)
+	{
+	}
+
+	bool setup()
+	{
+		switch (rom::mapperType())
+		{
+		case 0: // no mapper
+		case 2: // Mapper 2: UNROM - PRG/16K
+		case 3: // Mapper 3: CNROM - VROM/8K
+			if (rom::sizeOfImage() >= 0x8000) // 32K of code or more
+				mmc::bankSwitch(0, 1, 2, 3);
+			else if (rom::sizeOfImage() == 0x4000) // 16K of code
+				mmc::bankSwitch(0, 1, 0, 1);
+			else
+			{
+invalidROMSize:
+				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "image size", rom::sizeOfImage());
+				return false;
+			}
+			return true;		
+		case 1: // Mapper 1: MMC1
+			if (rom::count16KPRG()>=1 && rom::count16KPRG()<=16) // at least 16K of code, at most 256K of code
+			{
+				mmc::bankSwitch(0, 1, rom::count8KPRG()-2, rom::count8KPRG()-1);
+				return true;
+			}
+			goto invalidROMSize;
+		}
+		// unknown mapper
+		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE, "mapper", rom::mapperType());
+		return false;
+	}
+
 	byte_t maskPRG(byte_t bank, const byte_t count)
 	{
 		assert(count!=0);
@@ -263,42 +291,9 @@ namespace mapper
 		}
 	}
 
-	byte_t maskCHR(byte_t bank, const byte_t count)
-	{
-		assert(count!=0);
-		if (count==0)
-		{
-			return 0;
-		}else if (!SINGLE_BIT(count))
-		{
-			byte_t m;
-			for (m=1;m<count;m<<=1);
-			bank&=m-1;
-		}else
-		{
-			bank&=count-1;
-		}
-		return bank>=count?count-1:bank;
-	}
-
 	static void select16KROM(const byte_t value)
 	{
 		mmc::bankSwitch((value<<1), (value<<1)+1, INVALID, INVALID);
-	}
-
-	template <int CHRSize>
-	static void selectVROM(const byte_t value, const byte_t bank)
-	{
-		ppu::bankSwitch(
-			bank*CHRSize,
-			maskCHR(value, rom::countCHR()*(8/CHRSize))*CHRSize,
-			CHRSize
-			);
-	}
-
-	static void select8KVROM(const byte_t value)
-	{
-		selectVROM<8>(value, 0);
 	}
 
 	bool write(const maddr_t addr, const byte_t value)
@@ -307,11 +302,13 @@ namespace mapper
 		{
 		case 0: // no mapper
 			return false;
+		case 1: // Mapper 1:
+
 		case 2: // Mapper 2: Select 16K ROM
 			select16KROM(value);
 			return true;
 		case 3: // Mapper 3: Select 8K VROM
-			select8KVROM(value&3);
+			pmapper::select8KVROM(value&3);
 			return true;
 		}
 		ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "addr", valueOf(addr), "value", value, "mapper", rom::mapperType());
@@ -343,14 +340,14 @@ public:
 		tassert(mapper::maskPRG(6,3)==2);
 		tassert(mapper::maskPRG(31,16)==15);
 
-		tassert(mapper::maskCHR(0,4)==0);
-		tassert(mapper::maskCHR(3,4)==3);
-		tassert(mapper::maskCHR(5,4)==1);
-		tassert(mapper::maskCHR(5,3)==1);
-		tassert(mapper::maskCHR(5,2)==1);
-		tassert(mapper::maskCHR(6,6)==5);
-		tassert(mapper::maskCHR(6,7)==6);
-		tassert(mapper::maskCHR(32,16)==0);
+		tassert(pmapper::maskCHR(0,4)==0);
+		tassert(pmapper::maskCHR(3,4)==3);
+		tassert(pmapper::maskCHR(5,4)==1);
+		tassert(pmapper::maskCHR(5,3)==1);
+		tassert(pmapper::maskCHR(5,2)==1);
+		tassert(pmapper::maskCHR(6,6)==5);
+		tassert(pmapper::maskCHR(6,7)==6);
+		tassert(pmapper::maskCHR(32,16)==0);
 
 		printf("[ ] System memory at 0x%p\n", &ram);
 		return SUCCESS;

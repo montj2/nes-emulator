@@ -17,9 +17,6 @@ __declspec(align(0x1000))
 struct NESVRAM vram;
 struct NESOAM oam;
 
-// addresses of currently selected VROM banks.
-static int prevBankSrc[8];
-
 // PPU Control & Status Registers
 static flag_set<_reg8_t, PPUCTRL, 8> control; // $2000
 static flag_set<_reg8_t, PPUMASK, 8> mask; // $2001
@@ -37,20 +34,99 @@ static scroll_flag_t scroll; // $2005 Background Scrolling Offset / Reload regis
 static offset3_t xoffset;
 static vaddr_flag_t address; // $2006 VRAM Address Register / Scrolling Pointer
 static vaddr_flag_t tmpAddress; // debug only
-static byte_t latch; // $2007 Read/Write Data Register
 #define address1 address
 #define address2 scroll
 #define scrollptr address
 #define scrollrld scroll
 
-// PPU State
-static bool firstWrite; // shared for both port $2005 and $2006
-
+// PPU counters
 static int scanline;
 static long long frameNum;
 
 namespace mem
 {
+	// addresses of currently selected VROM banks.
+	static int prevBankSrc[8];
+
+	// shared for both port $2005 and $2006
+	static bool firstWrite;
+	// $2007 Read/Write Data Register
+	static byte_t latch;
+	
+	static void resetToggle()
+	{
+		firstWrite=true;
+		latch=INVALID;
+	}
+
+	static bool toggle()
+	{
+		const bool ret=firstWrite;
+		firstWrite=!firstWrite;
+		return ret;
+	}
+
+	static void reset()
+	{
+		// reset bank-switching state
+		memset(prevBankSrc, -1, sizeof(prevBankSrc));
+
+		// clear memory
+		memset(&vram,0,sizeof(vram));
+		memset(&oam,0,sizeof(oam));
+	}
+	
+	static void save(FILE *fp)
+	{
+		// memory
+		fwrite(&vram, sizeof(vram), 1, fp);
+		fwrite(&oam, sizeof(oam), 1, fp);
+		
+		// toggle
+		fwrite(&firstWrite, sizeof(firstWrite), 1, fp);
+
+		// latch
+		fwrite(&latch, sizeof(latch), 1, fp);
+
+		// bank-switching state
+		fwrite(prevBankSrc, sizeof(prevBankSrc), 1, fp);
+	}
+
+	static void load(FILE *fp)
+	{
+		// memory
+		fread(&vram, sizeof(vram), 1, fp);
+		fread(&oam, sizeof(oam), 1, fp);
+
+		// toggle
+		fread(&firstWrite, sizeof(firstWrite), 1, fp);
+
+		// latch
+		fread(&latch, sizeof(latch), 1, fp);
+
+		// bank-switching state
+		fread(prevBankSrc, sizeof(prevBankSrc), 1, fp);
+	}
+
+	static void copyBanks(const int dest, const int src, const int count)
+	{
+		assert((dest+count)*0x400<=0x2000);
+		assert((src+count)*0x400<=(int)rom::sizeOfVROM());
+		memcpy(&vramData(dest*0x400), rom::getVROM()+src*0x400, count*0x400);
+	}
+
+	void bankSwitch(const int dest, const int src, const int count)
+	{
+		for (int i=0; i<count; i++)
+		{
+			if (prevBankSrc[dest+i]!=src+i)
+			{
+				prevBankSrc[dest+i]=src+i;
+				copyBanks(dest+i, src+i, 1);
+			}
+		}
+	}
+
 	static vaddr_t ntMirror(vaddr_flag_t vaddr)
 	{
 		switch (rom::mirrorMode())
@@ -175,8 +251,7 @@ namespace mem
 		const vaddr_t addr=mirror(address, false);
 		{
 			// ?
-			// firstWrite=true;
-			// latch=data;
+			// resetToggle();
 		}
 		vramData(addr)=data;
 		incAddress();
@@ -206,7 +281,7 @@ namespace render
 
 	static void setScroll(const byte_t byte)
 	{
-		if (firstWrite)
+		if (mem::toggle())
 		{
 			// set horizontal scroll
 			xoffset=byte&7;
@@ -218,7 +293,6 @@ namespace render
 			assert((byte>>3)<30);
 			scroll.update<PPUADDR::YSCROLL>(byte>>3);
 		}
-		firstWrite=!firstWrite;
 	}
 
 	static void getReload(int *FH, int *HT, int *VT, int *NT, int *FV)
@@ -594,13 +668,13 @@ namespace render
 			preRender();
 		}else if (scanline>=0 && scanline<=239)
 		{
-			// visible scanliens
+			// visible scanlines
 			renderScanline();
 		}else if (scanline==240)
 		{
-			postRender();
 			// dummy scanline
 			renderScanline();
+			postRender();
 			// enter vblank
 			startVBlank();
 		}else if (scanline>=241 && scanline<=259)
@@ -701,32 +775,19 @@ namespace ppu
 		address2.clearAll();
 		tmpAddress.clearAll();
 
-		// reset state
-		firstWrite = true;
-		latch = INVALID;
+		// reset counters
 		scanline = -1;
 		frameNum = 0;
 
-		// clear memory
-		memset(&vram,0,sizeof(vram));
-		memset(&oam,0,sizeof(oam));
-
-		// reset bank state
-		memset(prevBankSrc, -1, sizeof(prevBankSrc));
-
-		// clear frame buffer
+		// reset renderer
 		render::reset();
+
+		// reset memory
+		mem::reset();
 	}
 
 	void save(FILE *fp)
 	{
-		// memory
-		fwrite(&vram, sizeof(vram), 1, fp);
-		fwrite(&oam, sizeof(oam), 1, fp);
-
-		// bank-switching state
-		fwrite(prevBankSrc, sizeof(prevBankSrc), 1, fp);
-
 		// registers
 		fwrite(&control, sizeof(control), 1, fp);
 		fwrite(&mask, sizeof(mask), 1, fp);
@@ -737,19 +798,13 @@ namespace ppu
 		fwrite(&address, sizeof(address), 1, fp);
 
 		fwrite(&oamAddr, sizeof(oamAddr), 1, fp);
-		fwrite(&firstWrite, sizeof(firstWrite), 1, fp);
-		fwrite(&latch, sizeof(latch), 1, fp);
+
+		// memory
+		mem::save(fp);
 	}
 
 	void load(FILE *fp)
 	{
-		// memory
-		fread(&vram, sizeof(vram), 1, fp);
-		fread(&oam, sizeof(oam), 1, fp);
-
-		// bank-switching state
-		fread(prevBankSrc, sizeof(prevBankSrc), 1, fp);
-
 		// registers
 		fread(&control, sizeof(control), 1, fp);
 		fread(&mask, sizeof(mask), 1, fp);
@@ -760,49 +815,9 @@ namespace ppu
 		fread(&address, sizeof(address), 1, fp);
 
 		fread(&oamAddr, sizeof(oamAddr), 1, fp);
-		fread(&firstWrite, sizeof(firstWrite), 1, fp);
-		fread(&latch, sizeof(latch), 1, fp);
-	}
 
-	static void copyBanks(const int dest, const int src, const int count)
-	{
-		assert((dest+count)*0x400<=0x2000);
-		assert((src+count)*0x400<=(int)rom::sizeOfVROM());
-		memcpy(&vramData(dest*0x400), rom::getVROM()+src*0x400, count*0x400);
-	}
-
-	void bankSwitch(const int dest, const int src, const int count)
-	{
-		for (int i=0; i<count; i++)
-		{
-			if (prevBankSrc[dest+i]!=src+i)
-			{
-				prevBankSrc[dest+i]=src+i;
-				copyBanks(dest+i, src+i, 1);
-			}
-		}
-	}
-
-	bool setup()
-	{
-		switch (rom::mapperType())
-		{
-		case 0: // no mapper
-		case 2: // Mapper 2: UNROM - PRG/16K
-		case 3: // Mapper 3: CNROM - VROM/8K
-			if (rom::sizeOfVROM()>=0x2000) // 8K of texture or more
-				bankSwitch(0, 0, 8);
-			else if (rom::sizeOfVROM()>0)
-			{
-				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "vromsize", rom::sizeOfVROM(), "mapper", rom::mapperType());
-				return false;
-			}
-			return true;
-		}
-		// unknown mapper
-		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE, "mapper", rom::mapperType());
-		return false;
-
+		// memory
+		mem::load(fp);
 	}
 
 	void init()
@@ -819,8 +834,7 @@ namespace ppu
 		case 2: // $2002 PPU Status Register
 			data=valueOf(status);
 			status.clear(PPUSTATUS::VBLANK);
-			firstWrite=true;
-			latch=INVALID;
+			mem::resetToggle();
 			return true;
 		case 0: // $2000 PPU Control Register 1
 		case 1: // $2001 PPU Control Register 2
@@ -846,7 +860,7 @@ namespace ppu
 		case 0: // $2000 PPU Control Register 1
 			if (!control[PPUCTRL::NMI_ENABLED] && (data&(byte_t)PPUCTRL::NMI_ENABLED) && status[PPUSTATUS::VBLANK])
 			{
-				// nmi should occur when enabled and VBL begins
+				// nmi should occur when enabled during VBlank
 				cpu::irq(IRQTYPE::NMI);
 			}
 			control1.asBitField()=data;
@@ -898,6 +912,65 @@ namespace ppu
 	long long currentFrame()
 	{
 		return frameNum;
+	}
+}
+
+namespace pmapper
+{
+	byte_t maskCHR(byte_t bank, const byte_t count)
+	{
+		assert(count!=0);
+		if (count==0)
+		{
+			return 0;
+		}else if (!SINGLE_BIT(count))
+		{
+			byte_t m;
+			for (m=1;m<count;m<<=1);
+			bank&=m-1;
+		}else
+		{
+			bank&=count-1;
+		}
+		return bank>=count?count-1:bank;
+	}
+
+	template <int CHRSize>
+	void selectVROM(const byte_t value, const byte_t bank)
+	{
+		mem::bankSwitch(
+			bank*CHRSize,
+			maskCHR(value, rom::count8KCHR()*(8/CHRSize))*CHRSize,
+			CHRSize
+			);
+	}
+
+	void select8KVROM(const byte_t value)
+	{
+		selectVROM<8>(value, 0);
+	}
+
+	bool setup()
+	{
+		switch (rom::mapperType())
+		{
+		case 0: // no mapper
+		case 1: // Mapper 1: MMC1
+		case 2: // Mapper 2: UNROM - PRG/16K
+		case 3: // Mapper 3: CNROM - VROM/8K
+			if (rom::sizeOfVROM()>=0x2000) // 8K of texture or more
+				mem::bankSwitch(0, 0, 8);
+			else if (rom::sizeOfVROM()>0)
+			{
+invalidVROMSize:
+				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "vrom size", rom::sizeOfVROM(), "mapper", rom::mapperType());
+				return false;
+			}
+			return true;
+		}
+		// unknown mapper
+		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE, "mapper", rom::mapperType());
+		return false;
 	}
 }
 

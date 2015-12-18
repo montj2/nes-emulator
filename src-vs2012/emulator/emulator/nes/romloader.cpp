@@ -53,10 +53,10 @@ namespace rom
 		fread(&romCtrl2,1,1,fp);
 		fread(&reserved,8,1,fp);
 
-		printf("[ ] %u 16K ROM Banks\n", prgCount);
-		printf("[ ] %u 8K CHR Banks\n", chrCount);
-		printf("[ ] %u ROM Control Byte #1\n", romCtrl);
-		printf("[ ] %u ROM Control Byte #2\n", romCtrl2);
+		printf("[ ] %u * 16K ROM Banks\n", prgCount);
+		printf("[ ] %u * 8K CHR Banks\n", chrCount);
+		printf("[ ] ROM Control Byte #1 : %u\n", valueOf(romCtrl));
+		printf("[ ] ROM Control Byte #2 : %u\n", valueOf(romCtrl2));
 
 		mapper=romCtrl(ROMCONTROL1::MAPPERLOW);
 		mapper|=romCtrl2(ROMCONTROL2::MAPPERHIGH)<<4;
@@ -125,7 +125,6 @@ namespace rom
 
 	void setMirrorMode(MIRRORING newMode)
 	{
-		// for test purpose only
 		mirroring = newMode;
 	}
 
@@ -144,9 +143,14 @@ namespace rom
 		return imageSize;
 	}
 
-	int countPRG()
+	int count16KPRG()
 	{
 		return prgCount;
+	}
+
+	int count8KPRG()
+	{
+		return prgCount*2;
 	}
 
 	size_t sizeOfVROM()
@@ -154,7 +158,7 @@ namespace rom
 		return vromSize;
 	}
 
-	int countCHR()
+	int count8KCHR()
 	{
 		return chrCount;
 	}

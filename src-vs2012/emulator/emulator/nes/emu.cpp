@@ -37,14 +37,15 @@ namespace emu
 	{
 		// setup mmc
 		mmc::reset();
-		mmc::setup();
+		mapper::reset();
+		mapper::setup();
 
 		// setup cpu
 		cpu::reset();
 
 		// setup ppu
 		ppu::reset();
-		ppu::setup();
+		pmapper::setup();
 	}
 
 	bool nextFrame()
@@ -88,6 +89,7 @@ namespace emu
 	void saveState(FILE *fp)
 	{
 		mmc::save(fp);
+		mapper::save(fp);
 		cpu::save(fp);
 		ppu::save(fp);
 	}
@@ -97,6 +99,7 @@ namespace emu
 		reset(); // necessary
 
 		mmc::load(fp);
+		mapper::load(fp);
 		cpu::load(fp);
 		ppu::load(fp);
 	}

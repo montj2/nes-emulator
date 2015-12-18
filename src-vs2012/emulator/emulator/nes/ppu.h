@@ -38,7 +38,7 @@ enum class PPUADDR {
     NT=NT_H|NT_V,
     NT_OFFSET=0x3FF,
     YOFFSET=0x7000,
-	// XOFFSET is stored in reload register
+	// XOFFSET is stored elsewhere
 
 	FIRST_WRITE_HI=0x7000,
 	FIRST_WRITE_MID=0x0C00,
@@ -190,9 +190,6 @@ namespace ppu
 	void init();
 	void reset();
 
-	void bankSwitch(const int dest, const int src, const int count);
-	bool setup();
-
 	bool readPort(const maddr_t maddress, byte_t& data);
 	bool writePort(const maddr_t maddress, const byte_t data);
 
@@ -206,4 +203,16 @@ namespace ppu
 	// save state
 	void save(FILE *fp);
 	void load(FILE *fp);
+}
+
+namespace pmapper
+{
+	// global functions
+	bool setup();
+
+	template <int CHRSize>
+	void selectVROM(const byte_t value, const byte_t bank);
+	void select8KVROM(const byte_t value);
+
+	byte_t maskCHR(byte_t bank, const byte_t count);
 }
