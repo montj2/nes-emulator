@@ -40,7 +40,7 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 			emu::reset();
 
 			// create log file
-			FILE *fp = fopen("m:\\log.txt", "wt");
+			FILE *fp = fopen("log.txt", "wt");
 			debug::setOutputFile(fp);
 
 			// start execution

@@ -171,12 +171,12 @@ namespace mem
 	static void write(const byte_t data)
 	{
 		// make sure it's safe to write
-		// assert(canWrite());
+		assert(canWrite());
 		const vaddr_t addr=mirror(address, false);
 		{
 			// ?
-			firstWrite=true;
-			latch=data;
+			// firstWrite=true;
+			// latch=data;
 		}
 		vramData(addr)=data;
 		incAddress();
@@ -569,13 +569,12 @@ namespace render
 		{
 			if (scanline>=0 && scanline<=239)
 			{
-	#ifdef MONITOR_RENDERING
-				if (mask[PPUMASK::SPR_VISIBLE])
+			#ifndef NDEBUG
 				printf("[P] --- Scanline %03d --- Sprite 0: (%d, %d) %s %s ScrollY=%d:%d\n", scanline, oamSprite(0).x, oamSprite(0).yminus1+1, 
 					mask[PPUMASK::SPR_VISIBLE]?"EN":"",
 					control[PPUCTRL::LARGE_SPRITE]?"LG":"",
 					scroll(PPUADDR::YSCROLL), scroll(PPUADDR::YOFFSET));
-	#endif
+			#endif
 				drawBackground();
 				evaluateSprites();
 				drawSprites(false); // front-priority sprites first
@@ -879,7 +878,9 @@ namespace ppu
 
 	bool hsync()
 	{
-		debug::printPPUState(frameNum, scanline, status[PPUSTATUS::VBLANK], status[PPUSTATUS::HIT], mask[PPUMASK::BG_VISIBLE], mask[PPUMASK::SPR_VISIBLE]);
+		#ifdef MONITOR_RENDERING
+			debug::printPPUState(frameNum, scanline, status[PPUSTATUS::VBLANK], status[PPUSTATUS::HIT], mask[PPUMASK::BG_VISIBLE], mask[PPUMASK::SPR_VISIBLE]);
+		#endif
 		return render::HBlank();
 	}
 
