@@ -51,7 +51,7 @@ namespace emu
 	{
 		for (;;)
 		{
-			if (cpu::run(-1,114))
+			if (cpu::run(-1, 113))
 			{
 				if (!ppu::hsync())
 				{

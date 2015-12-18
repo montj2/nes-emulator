@@ -37,6 +37,7 @@ typedef bit_field<_reg8_t, 8> reg_bit_field_t;
 static flag_set<_reg8_t, IRQTYPE, 8> pendingIRQs;
 
 // Run-time statistics
+static long remainingCycles;
 #ifdef WANT_STATISTICS
 	static long long totInstructions;
 	static long long totCycles;
@@ -348,8 +349,6 @@ namespace arithmetic
 
 namespace cpu
 {
-	static bool debugging = false;
-
 	void reset()
 	{
 		// reset general purpose registers
@@ -371,6 +370,7 @@ namespace cpu
 		// this will set PC to the entry point
 		interrupt::request(IRQTYPE::RST);
 
+		remainingCycles = 0;
 		// others
 #ifdef WANT_RUN_HIT
 		for (int i=0;i<0x8000;i++)
@@ -420,13 +420,12 @@ namespace cpu
 	// emulate at most n instructions within specified cycles
 	bool run(int n, long cycles)
 	{
-		while ((n<0 || n--) && cycles>0)
+		remainingCycles+=cycles;
+		while ((n<0 || n--) && remainingCycles>0)
 		{
 			int cyc;
 			cyc=nextInstruction();
 			if (cyc<0) return false; // execution terminated
-			
-			cycles-=cyc;
 		}
 		return true;
 	}
@@ -826,8 +825,7 @@ jBranch:
 
 	int nextInstruction()
 	{
-		int cycles=0;
-
+		int cycles = 0;
 		// handle interrupt request
 		interrupt::poll();
 
@@ -854,10 +852,9 @@ jBranch:
 		cycles += readEffectiveAddress(opcode, op, (op.inst==INS_STA || op.inst==INS_STX || op.inst==INS_STY));
 		assert((valueOf(PC)-valueOf(opaddr)) == op.size);
 
-		if (debugging)
-		{
-			debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
-		}
+#ifdef WANT_DISASSEMBLY
+		debug::printDisassembly(opaddr, opcode, X, Y, EA, M);
+#endif
 
 		// step4: execute
 		bool writeBack = false;
@@ -873,22 +870,26 @@ jBranch:
 		{
 			assert(addr != 0xCCCC);
 			mmc::write(addr, value);
+			if (addr == 0x04014)
+			{
+				cycles += 513;
+			}
 		}
 
-		cycles+=op.cycles;
+		cycles += op.cycles;
 		// end of instruction pipeline
 
 		assert(P[F_RESERVED]);
-		if (debugging)
-		{
-			debug::printCPUState(PC, A, X ,Y, valueOf(P), SP, cycles);
-		}
+#ifdef MONITOR_CPU
+		debug::printCPUState(PC, A, X ,Y, valueOf(P), SP, cycles);
+#endif
 
 		// update statistics
 		STAT_ADD(totInstructions, 1);
 		STAT_ADD(numInstructionsPerOpcode[(int)op.inst], 1);
 		STAT_ADD(numInstructionsPerAdrMode[(int)op.addrmode], 1);
 		STAT_ADD(totCycles, cycles);
+		remainingCycles -= cycles;
 		return cycles;
 	}
 }

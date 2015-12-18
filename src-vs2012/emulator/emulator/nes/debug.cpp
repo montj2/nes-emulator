@@ -60,6 +60,12 @@ namespace debug
 		fprintf(foutput, "[A:%02X X:%02X Y:%02X P:%02X SP:%02X CYC:%3d] -> %04X\n", ra, rx, ry, rp, rsp, cyc, valueOf(pc));
 	}
 
+	void printPPUState(const long long frameNum, const int scanline, const bool vblank, const bool hit, const bool bgmsk, const bool sprmsk)
+	{
+		fprintf(foutput, "----- FR: %I64d SL: %3d VB:%s HIT:%s MSK:%c%c -----\n", frameNum, scanline, vblank?"True":"false", hit?"Yes":"no", 
+			bgmsk?'B':'_', sprmsk?'S':'_');
+	}
+
 	// a NULL at the end of argv is REQUIRED!
 	static void printToConsole(int type, const wchar_t * typestr, int stype, const wchar_t * stypestr, const wchar_t * file, const wchar_t * function_name, unsigned long line_number, va_list argv)
 	{

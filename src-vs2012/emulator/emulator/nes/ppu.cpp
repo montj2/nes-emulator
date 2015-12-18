@@ -171,7 +171,7 @@ namespace mem
 	static void write(const byte_t data)
 	{
 		// make sure it's safe to write
-		assert(canWrite());
+		// assert(canWrite());
 		const vaddr_t addr=mirror(address, false);
 		{
 			// ?
@@ -269,6 +269,11 @@ namespace render
 		return mask[PPUMASK::BG_VISIBLE] || mask[PPUMASK::SPR_VISIBLE];
 	}
 
+	static bool leftClipping()
+	{
+		return mask[PPUMASK::BG_CLIP8] || mask[PPUMASK::SPR_CLIP8];
+	}
+
 	static void present()
 	{
 		if (enabled())
@@ -308,7 +313,9 @@ namespace render
 	static void duringVBlank()
 	{
 		// ? keep VBlank flag turned on
-		status|=PPUSTATUS::VBLANK;
+		{
+			// status|=PPUSTATUS::VBLANK;
+		}
 	}
 
 	static void endVBlank()
@@ -319,14 +326,21 @@ namespace render
 		status-=PPUSTATUS::HIT;
 	}
 
-	static void beginFrame()
+	static void preRender()
 	{
 		if (enabled())
 		{
 			reloadVertical();
 			status|=PPUSTATUS::WRITEIGNORED;
 		}
-		
+	}
+
+	static void postRender()
+	{
+	}
+
+	static void beginFrame()
+	{
 		ui::onFrameBegin();
 	}
 
@@ -386,7 +400,7 @@ namespace render
 				}
 			}
 
-			if (startX>=0)
+			if (startX>0)
 			{
 				// now render for the second part
 				// switch across to the next tables
@@ -438,6 +452,8 @@ namespace render
 
 	static void evaluateSprites()
 	{
+		pendingSpritesCount=0;
+
 		if (mask[PPUMASK::SPR_VISIBLE])
 		{
 			status-=PPUSTATUS::COUNTGT8;
@@ -445,7 +461,10 @@ namespace render
 			// find sprites that are within y range for the scanline
 			const int sprHeight=control[PPUCTRL::LARGE_SPRITE]?16:8;
 
-			pendingSpritesCount=0;
+			if (scanline==239)
+			{
+				scanline=239;
+			}
 			for (int i=63;i>=0;i--)
 			{
 				if (oamSprite(i).yminus1<scanline && oamSprite(i).yminus1+sprHeight>=scanline)
@@ -490,11 +509,10 @@ namespace render
 
 				const byte_t colorD2D3 = spr.attrib.select(SPRATTR::COLOR_HI)<<2;
 
-				for (int pixel=(mask[PPUMASK::SPR_CLIP8]?max(8-spr.x,0):0); // clip sprites when needed
-					pixel<sprWidth;
-					pixel++)
+				for (int pixel=0;pixel<sprWidth;pixel++)
 				{
 					const int X=spr.x+pixel;
+					if (X>255) break;
 
 					const NESVRAM::VROM::PATTERN_TABLE *pt;
 					const int tileXOffset=spr.attrib[SPRATTR::FLIP_H]?(sprWidth-1-pixel):pixel;
@@ -502,9 +520,8 @@ namespace render
 					tileid_t tileIndex;
 					if (control[PPUCTRL::LARGE_SPRITE])
 					{
-						assert(0);
 						tileIndex=(spr.tile&~1)|(sprYOffset>>3);
-						pt=&vramPt(tileIndex&1);
+						pt=&vramPt(spr.tile&1);
 					}else
 					{
 						tileIndex=spr.tile;
@@ -521,7 +538,8 @@ namespace render
 					if ((color&3)!=0) // opaque pixel
 					{
 						// sprite 0 hit detection (regardless priority)
-						if (sprId==0 && mask[PPUMASK::BG_VISIBLE] && solidPixel[X] && X<RENDER_WIDTH-1)
+						
+						if (sprId==0 && !status[PPUSTATUS::HIT] && solidPixel[X] && mask[PPUMASK::BG_VISIBLE] && !(leftClipping() && X<8) && X!=255)
 						{
 							// background is non-transparent here
 							status|=PPUSTATUS::HIT;
@@ -549,17 +567,23 @@ namespace render
 	{
 		if (enabled())
 		{
-			vassert(scanline>=0 && scanline<=239);
-#ifdef MONITOR_RENDERING
-			printf("[P] --- Scanline %03d --- Sprite 0: (%d, %d) %s %s ScrollY=%d:%d\n", scanline, oamSprite(0).x, oamSprite(0).yminus1, 
-				mask[PPUMASK::SPR_VISIBLE]?"EN":"",
-				control[PPUCTRL::LARGE_SPRITE]?"LG":"",
-				scroll(PPUADDR::YSCROLL), scroll(PPUADDR::YOFFSET));
-#endif
-			drawBackground();
-			evaluateSprites();
-			drawSprites(false); // front-priority sprites first
-			drawSprites(true);
+			if (scanline>=0 && scanline<=239)
+			{
+	#ifdef MONITOR_RENDERING
+				if (mask[PPUMASK::SPR_VISIBLE])
+				printf("[P] --- Scanline %03d --- Sprite 0: (%d, %d) %s %s ScrollY=%d:%d\n", scanline, oamSprite(0).x, oamSprite(0).yminus1+1, 
+					mask[PPUMASK::SPR_VISIBLE]?"EN":"",
+					control[PPUCTRL::LARGE_SPRITE]?"LG":"",
+					scroll(PPUADDR::YSCROLL), scroll(PPUADDR::YOFFSET));
+	#endif
+				drawBackground();
+				evaluateSprites();
+				drawSprites(false); // front-priority sprites first
+				drawSprites(true);
+			}else
+			{
+				// dummy scanline
+			}
 		}
 	}
 
@@ -568,11 +592,17 @@ namespace render
 		if (scanline==-1)
 		{
 			beginFrame();
+			preRender();
 		}else if (scanline>=0 && scanline<=239)
 		{
+			// visible scanliens
 			renderScanline();
 		}else if (scanline==240)
 		{
+			postRender();
+			// dummy scanline
+			renderScanline();
+			// enter vblank
 			startVBlank();
 		}else if (scanline>=241 && scanline<=259)
 		{
@@ -763,15 +793,15 @@ namespace ppu
 		case 3: // Mapper 3: CNROM - VROM/8K
 			if (rom::sizeOfVROM()>=0x2000) // 8K of texture or more
 				bankSwitch(0, 0, 8);
-			else
+			else if (rom::sizeOfVROM()>0)
 			{
-				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE);
+				ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "vromsize", rom::sizeOfVROM(), "mapper", rom::mapperType());
 				return false;
 			}
 			return true;
 		}
 		// unknown mapper
-		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE);
+		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE, "mapper", rom::mapperType());
 		return false;
 
 	}
@@ -815,6 +845,11 @@ namespace ppu
 		switch (valueOf(maddress)&7)
 		{
 		case 0: // $2000 PPU Control Register 1
+			if (!control[PPUCTRL::NMI_ENABLED] && (data&(byte_t)PPUCTRL::NMI_ENABLED) && status[PPUSTATUS::VBLANK])
+			{
+				// nmi should occur when enabled and VBL begins
+				cpu::irq(IRQTYPE::NMI);
+			}
 			control1.asBitField()=data;
 			return true;
 		case 1: // $2001 PPU Control Register 2
@@ -844,6 +879,7 @@ namespace ppu
 
 	bool hsync()
 	{
+		debug::printPPUState(frameNum, scanline, status[PPUSTATUS::VBLANK], status[PPUSTATUS::HIT], mask[PPUMASK::BG_VISIBLE], mask[PPUMASK::SPR_VISIBLE]);
 		return render::HBlank();
 	}
 

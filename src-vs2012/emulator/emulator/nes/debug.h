@@ -9,6 +9,7 @@ namespace debug
 
 	void printDisassembly(const maddr_t pc, const opcode_t opcode, const _reg8_t rx, const _reg8_t ry, const maddr_t addr, const operand_t operand);
 	void printCPUState(const maddr_t pc, const _reg8_t ra, const _reg8_t rx, const _reg8_t ry, const _reg8_t rp, const _reg8_t rsp, const int cyc);
+	void printPPUState(const long long frameNum, const int scanline, const bool vblank, const bool hit, const bool bgmsk, const bool sprmsk);
 }
 
 #define WARN(TYPE, SUBTYPE, ...) debug::warn(TYPE, SUBTYPE, _CRT_WIDE(__FUNCTION__), __LINE__, __VA_ARGS__, 0)

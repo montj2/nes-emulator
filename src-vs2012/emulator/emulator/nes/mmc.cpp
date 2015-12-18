@@ -50,6 +50,7 @@ namespace mmc
 		switch (rom::mapperType())
 		{
 		case 0: // no mapper
+		case 1: // Mapper 1: MMC1
 		case 2: // Mapper 2: UNROM - PRG/16K
 		case 3: // Mapper 3: CNROM - VROM/8K
 			if (rom::sizeOfImage() >= 0x8000) // 32K of code or more
@@ -64,7 +65,7 @@ namespace mmc
 			return true;
 		}
 		// unknown mapper
-		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE);
+		FATAL_ERROR(INVALID_ROM, UNSUPPORTED_MAPPER_TYPE, "mapper", rom::mapperType());
 		return false;
 	}
 
@@ -310,10 +311,10 @@ namespace mapper
 			select16KROM(value);
 			return true;
 		case 3: // Mapper 3: Select 8K VROM
-			select8KVROM(value);
+			select8KVROM(value&3);
 			return true;
 		}
-		ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "addr", valueOf(addr), "value", value);
+		ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "addr", valueOf(addr), "value", value, "mapper", rom::mapperType());
 		return false;
 	}
 }
