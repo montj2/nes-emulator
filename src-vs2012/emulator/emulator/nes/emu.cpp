@@ -53,7 +53,6 @@ namespace emu
 		{
 			if (cpu::run(-1,114))
 			{
-				// printf("[ ] ------ Scanline %d ------\n", ppu::currentScanline());
 				if (!ppu::hsync())
 				{
 					// frame ends

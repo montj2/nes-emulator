@@ -114,14 +114,15 @@ namespace mem
 
 	static void incAddress()
 	{
+		assert(valueOf(address)>>14==0);
 		address.asBitField()+=control[PPUCTRL::VERTICAL_WRITE]?32:1;
 	}
 
 	static void setAddress(const byte_t byte) // $2006
 	{
-		if (firstWrite) // higher 2 bits
+		if (firstWrite) // higher 6 bits
 		{
-			// vassert((byte&~0x3F)==0);
+			vassert((byte&~0x3F)==0);
 			tmpAddress.update<PPUADDR::HIGH_BYTE>(byte&0x3F);
 
 			// store in Reload register temporarily
@@ -184,13 +185,18 @@ namespace mem
 
 namespace render
 {
+	const int SCREEN_WIDTH=256;
+	const int SCREEN_HEIGHT=240;
+	const int RENDER_XOFFSET=8;
+	const int RENDER_WIDTH=SCREEN_WIDTH+16;
+
 	static rgb32_t pal32[64];
-	static palindex_t vBuffer[240][256];
-	static rgb32_t vBuffer32[256*240];
+	static palindex_t vBuffer[SCREEN_HEIGHT][RENDER_WIDTH];
+	static rgb32_t vBuffer32[SCREEN_HEIGHT*SCREEN_WIDTH];
 
 	static int8_t pendingSprites[8];
 	static int pendingSpritesCount;
-	static bool solidPixel[256];
+	static bool solidPixel[RENDER_WIDTH];
 
 	static void setScroll(const byte_t byte)
 	{
@@ -267,13 +273,18 @@ namespace render
 
 			// look up each pixel
 			rgb32_t* vBuf32=vBuffer32;
-			const palindex_t* vBufIdx=&vBuffer[0][0];
-			for (int i=0;i<256*240;i++)
-				*vBuf32++=p32[valueOf(*vBufIdx++)];
+			for (int y=0;y<SCREEN_HEIGHT;y++)
+			{
+				const palindex_t* vBufIdx=&vBuffer[y][RENDER_XOFFSET];
+				for (int x=0;x<SCREEN_WIDTH;x++)
+				{
+					*vBuf32++=p32[valueOf(*vBufIdx++)];
+				}
+			}
 		}
 		
 		// display
-		ui::blt32(vBuffer32, 256, 240);
+		ui::blt32(vBuffer32, SCREEN_WIDTH, SCREEN_HEIGHT);
 	}
 
 	static void startVBlank()
@@ -352,7 +363,7 @@ namespace render
 			for (int tileCounter=(startX>>3);tileCounter<=31;tileCounter++)
 			{
 				const tileid_t tileIndex(nt->tiles[tileRow][tileCounter]);
-				const int X = (tileCounter<<3)+7-startX;
+				const int X = (tileCounter<<3)+7-startX+RENDER_XOFFSET;
 
 				// look up the tile in attribute table to find its color (D2 and D3)
 				const byte_t colorD2D3 = attr->lookup(tileRow, tileCounter);
@@ -367,7 +378,7 @@ namespace render
 					const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
 					const byte_t color = colorD0D1|colorD2D3;
 					// write to frame buffer
-					vassert(X-pixel>=0 && X-pixel<256);
+					vassert(X-pixel>=0 && X-pixel<RENDER_WIDTH);
 					vBuffer[scanline][X-pixel]=color;
 				}
 			}
@@ -403,8 +414,8 @@ namespace render
 						const byte_t colorD0D1 = ((colorD0>>pixel)&1)|(((colorD1>>pixel)<<1)&2);
 						const byte_t color = colorD0D1|colorD2D3;
 						// write to frame buffer
-						vassert(X-pixel>=0 && X-pixel<256);
-						vBuffer[scanline][X-pixel]=color;
+						vassert(X-pixel>=0 && X-pixel<SCREEN_WIDTH);
+						vBuffer[scanline][X+RENDER_XOFFSET-pixel]=color;
 					}
 				}
 			}
@@ -436,19 +447,21 @@ namespace render
 			{
 				if (oamSprite(i).yminus1<scanline && oamSprite(i).yminus1+sprHeight>=scanline)
 				{
-					if (pendingSpritesCount<8)
-					{
-						pendingSprites[pendingSpritesCount++]=i;
-					}else
+#ifndef NO_LIMIT_SPRITES
+					if (pendingSpritesCount>=8)
 					{
 						// more than 8 sprites appear in this scanline
 						status|=PPUSTATUS::COUNTGT8;
 						break;
+					}else
+#endif
+					{
+						pendingSprites[pendingSpritesCount++]=i;
 					}
 				}
 			}
 
-			for (int i=0;i<256;i++)
+			for (int i=0;i<RENDER_WIDTH;i++)
 			{
 				solidPixel[i]=((vBuffer[scanline][i]&3)!=0);
 			}
@@ -467,7 +480,6 @@ namespace render
 				const int sprId = pendingSprites[i];
 				const auto spr = oamSprite(sprId);
 				if (spr.attrib[SPRATTR::BEHIND_BG]!=behindBG) continue;
-				if (mask[PPUMASK::SPR_CLIP8] && spr.x<8) continue; // clip sprites when needed
 
 				// get the sprite info
 				const int sprYOffset = scanline-(spr.yminus1+1);
@@ -475,10 +487,11 @@ namespace render
 
 				const byte_t colorD2D3 = spr.attrib.select(SPRATTR::COLOR_HI)<<2;
 
-				for (int pixel=0;pixel<sprWidth;pixel++)
+				for (int pixel=(mask[PPUMASK::SPR_CLIP8]?max(8-spr.x,0):0); // clip sprites when needed
+					pixel<sprWidth;
+					pixel++)
 				{
-					const int X=spr.x+pixel;
-					if (X>=256) break;
+					const int X=spr.x+pixel+RENDER_XOFFSET;
 
 					const NESVRAM::VROM::PATTERN_TABLE *pt;
 					const int tileXOffset=spr.attrib[SPRATTR::FLIP_H]?(sprWidth-1-pixel):pixel;
@@ -505,7 +518,7 @@ namespace render
 					if ((color&3)!=0) // opaque pixel
 					{
 						// sprite 0 hit detection (regardless priority)
-						if (sprId==0 && mask[PPUMASK::BG_VISIBLE] && solidPixel[X] && X!=255)
+						if (sprId==0 && mask[PPUMASK::BG_VISIBLE] && solidPixel[X] && X>=RENDER_XOFFSET && X<RENDER_XOFFSET+SCREEN_WIDTH-1)
 						{
 							// background is non-transparent here
 							status|=PPUSTATUS::HIT;
@@ -525,7 +538,6 @@ namespace render
 						}
 					}
 				}
-				if (sprId==0 && sprYOffset+1==sprHeight) status|=PPUSTATUS::HIT;
 			}
 		}
 	}
@@ -535,6 +547,12 @@ namespace render
 		if (enabled())
 		{
 			vassert(scanline>=0 && scanline<=239);
+#ifdef MONITOR_RENDERING
+			printf("[P] --- Scanline %03d --- Sprite 0: (%d, %d) %s %s ScrollY=%d:%d\n", scanline, oamSprite(0).x, oamSprite(0).yminus1, 
+				mask[PPUMASK::SPR_VISIBLE]?"EN":"",
+				control[PPUCTRL::LARGE_SPRITE]?"LG":"",
+				scroll(PPUADDR::YSCROLL), scroll(PPUADDR::YOFFSET));
+#endif
 			drawBackground();
 			evaluateSprites();
 			drawSprites(false); // front-priority sprites first
