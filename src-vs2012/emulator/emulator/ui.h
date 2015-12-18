@@ -12,6 +12,7 @@ namespace ui
 {
 	// global functions
 	void init();
+	void reset();
 
 	void blt32(const uint32_t buffer[],const int width,const int height);
 

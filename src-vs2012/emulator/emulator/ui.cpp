@@ -11,7 +11,6 @@
 namespace ui
 {
 	static bool quitRequired = false;
-	static bool resetRequired = false;
 
 	// controller state
 	static bool joypadPresent[2] = {false};
@@ -35,7 +34,10 @@ namespace ui
 		buttonMapping[0][BUTTON_LEFT]=VK_LEFT;
 		buttonMapping[0][BUTTON_RIGHT]=VK_RIGHT;
 		joypadPresent[0]=true;
+	}
 
+	void reset()
+	{
 		// reset input state
 		resetInput();
 	}
@@ -103,6 +105,7 @@ namespace ui
 			}
 			else
 			{
+				ui::reset();
 				emu::reset();
 			}
 		}else
@@ -127,6 +130,7 @@ namespace ui
 				FILE *fp=fopen("default.sav","rb");
 				if (fp!=nullptr)
 				{
+					ui::reset();
 					emu::loadState(fp);
 					fclose(fp);
 				}else
@@ -173,15 +177,10 @@ namespace ui
 		assert(button>=0 && button<BUTTON_COUNT);
 		if (hasInput(player))
 		{
-			if (button>=BUTTON_COUNT) return true;
+			if (button>=BUTTON_COUNT) return 1;
 			return buttonState[player%2][button%BUTTON_COUNT];
 		}else
-			return false;
-	}
-
-	bool forceReset()
-	{
-		return resetRequired;
+			return 0;
 	}
 
 	bool forceTerminate()
