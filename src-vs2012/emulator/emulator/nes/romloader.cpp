@@ -162,4 +162,9 @@ namespace rom
 	{
 		return chrCount;
 	}
+
+	int count4KCHR()
+	{
+		return chrCount*2;
+	}
 }

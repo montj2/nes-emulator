@@ -3,9 +3,10 @@ enum class MIRRORING {
 	MIN=0,
     HORIZONTAL=0,
     VERTICAL,
-    FOURSCREEN,
-    SINGLESCREEN,
-	MAX=SINGLESCREEN
+	FOURSCREEN,
+    LSINGLESCREEN,
+    HSINGLESCREEN,
+	MAX=HSINGLESCREEN
 };
 
 enum class ROMCONTROL1 {
@@ -38,5 +39,6 @@ namespace rom
 
 	const char* getVROM();
 	int count8KCHR();
+	int count4KCHR();
 	size_t sizeOfVROM();
 }

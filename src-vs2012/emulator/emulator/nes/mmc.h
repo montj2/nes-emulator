@@ -22,15 +22,15 @@ private:
     uint8_t __ext[0x1000];
 
 public:
-	// $6000 SaveRAM
-    uint8_t bank6[8192];
-
 	union
 	{
-		uint8_t code[0x8000];
+		uint8_t code[0xA000];
 
 		struct
 		{
+			// $6000 SaveRAM
+			uint8_t bank6[8192];
+
 			// $8000 PRG-ROM (8K per bank, 4 built-in banks)
 			uint8_t bank8[8192], bankA[8192];
 
@@ -88,6 +88,8 @@ namespace mapper
 
 	bool write(const maddr_t addr, const byte_t value);
 
+	bool mmc1Write(const maddr_t addr, const byte_t value);
+
 	byte_t maskPRG(byte_t bank, const byte_t count);
 
 	// save state
@@ -100,6 +102,7 @@ enum class MMC1REG
 	NT_MIRRORING=0x3,
 	PRG_SWITCH_MODE=0xC,
 	VROM_SWITCH_MODE=0x10,
+	PRG_BANK=0xF,
 
 	MASK=0x1F
 };

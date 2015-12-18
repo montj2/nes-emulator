@@ -88,7 +88,7 @@ namespace mmc
 		opcode_t opcode;
 #ifdef WANT_MEM_PROTECTION
 		// check if address in code section [$8000, $FFFF]
-		FATAL_ERROR_UNLESS(MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "PC", valueOf(pc));
+		FATAL_ERROR_UNLESS(valueOf(pc)>=0x6000, INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "PC", valueOf(pc));
 		opcode = ram.bank8[pc-0x8000];
 #else
 		WARN_IF(!MSB(pc), INVALID_MEMORY_ACCESS, MEMORY_NOT_EXECUTABLE, "PC", valueOf(pc));
@@ -227,24 +227,39 @@ namespace mmc
 namespace mapper
 {
 	// MMC1 registers
-	static ioreg_t m1Pos;
-	static flag_set<ioreg_t, MMC1REG> m1Reg[4];
+	static ioreg_t mmc1Sel; // register select
+	static ioreg_t mmc1Pos;
+	static ioreg_t mmc1Tmp;
+	static flag_set<ioreg_t, MMC1REG, 5> mmc1Regs[4];
+	#define mmc1Cfg mmc1Regs[0]
 
 	void reset()
 	{
 		// MMC1
-		m1Pos=0;
+		mmc1Sel=INVALID;
+		mmc1Tmp=0;
+		mmc1Pos=0;
 		for (int i=0; i<4; i++)
-			m1Reg[i].clearAll();
+		{
+			mmc1Regs[i].clearAll();
+		}
 
 	}
 
 	void load(FILE* fp)
 	{
+		fread(&mmc1Sel, sizeof(mmc1Sel), 1, fp);
+		fread(&mmc1Pos, sizeof(mmc1Pos), 1, fp);
+		fread(&mmc1Tmp, sizeof(mmc1Tmp), 1, fp);
+		fread(&mmc1Regs, sizeof(mmc1Regs), 1, fp);
 	}
 
 	void save(FILE* fp)
 	{
+		fwrite(&mmc1Sel, sizeof(mmc1Sel), 1, fp);
+		fwrite(&mmc1Pos, sizeof(mmc1Pos), 1, fp);
+		fwrite(&mmc1Tmp, sizeof(mmc1Tmp), 1, fp);
+		fwrite(&mmc1Regs, sizeof(mmc1Regs), 1, fp);
 	}
 
 	bool setup()
@@ -291,9 +306,16 @@ invalidROMSize:
 		}
 	}
 
-	static void select16KROM(const byte_t value)
+	static void selectFirst16KROM(const byte_t value) // for Mapper 2
 	{
+		ERROR_IF(((int)value+1)*2>=rom::count8KPRG(), INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "bankSize", 16, "num", value);
 		mmc::bankSwitch((value<<1), (value<<1)+1, INVALID, INVALID);
+	}
+
+	static void select32KROM(const byte_t value) // for MMC1
+	{
+		ERROR_UNLESS((int)value*4<rom::count8KPRG(), INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "bankSize", 32, "num", value);
+		mmc::bankSwitch((value<<2), (value<<2)+1, (value<<2)+2, (value<<2)+3);
 	}
 
 	bool write(const maddr_t addr, const byte_t value)
@@ -303,15 +325,131 @@ invalidROMSize:
 		case 0: // no mapper
 			return false;
 		case 1: // Mapper 1:
-
+			return mmc1Write(addr, value);
 		case 2: // Mapper 2: Select 16K ROM
-			select16KROM(value);
+			selectFirst16KROM(value);
 			return true;
 		case 3: // Mapper 3: Select 8K VROM
 			pmapper::select8KVROM(value&3);
 			return true;
 		}
-		ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "addr", valueOf(addr), "value", value, "mapper", rom::mapperType());
+		FATAL_ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "addr", valueOf(addr), "value", value, "mapper", rom::mapperType());
+		return false;
+	}
+
+	// various mapper handlers
+	static void mmc1Apply(const byte_t sel)
+	{
+		byte_t value=mmc1Regs[sel](MMC1REG::MASK);
+		switch (sel)
+		{
+		case 0: // Configuration Register
+			// configure mirroring
+			switch (mmc1Cfg(MMC1REG::NT_MIRRORING))
+			{
+			case 0:
+				rom::setMirrorMode(MIRRORING::LSINGLESCREEN);
+				break;
+			case 1:
+				rom::setMirrorMode(MIRRORING::HSINGLESCREEN);
+				break;
+			case 2:
+				rom::setMirrorMode(MIRRORING::VERTICAL);
+				break;
+			case 3:
+				rom::setMirrorMode(MIRRORING::HORIZONTAL);
+				break;
+			}
+			break;
+
+		case 1: // Select 4K or 8K VROM bank at 0000h
+			if (rom::count8KCHR()>0)
+			{
+				if (mmc1Cfg[MMC1REG::VROM_SWITCH_MODE])
+				{
+					// 4K
+					ERROR_IF((int)value>=rom::count4KCHR(), INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "bankSize", 4, "num", value);
+					pmapper::selectVROM(4, value, 0);
+				}else
+				{
+					// 8K
+					ERROR_IF((int)value>=rom::count8KCHR(), INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "bankSize", 8, "num", value);
+					pmapper::select8KVROM(value);
+				}
+			}
+			break;
+
+		case 2: // Select 4K VROM bank at 1000h (4K mode only)
+			if (rom::count8KCHR()>0)
+			{
+				FATAL_ERROR_IF(mmc1Cfg[MMC1REG::VROM_SWITCH_MODE], ILLEGAL_OPERATION, MAPPER_FAILURE, "mmc1reg2", value);
+				ERROR_IF((int)value>=rom::count4KCHR(), INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "bankSize", 4, "num", value);
+				pmapper::selectVROM(4, value, 1);
+			}
+			break;
+
+		case 3: // Select 16K or 2x16K ROM bank
+			value=mmc1Regs[sel](MMC1REG::PRG_BANK);
+			switch (mmc1Cfg(MMC1REG::PRG_SWITCH_MODE))
+			{
+			case 0:
+			case 1: // Switchable 32K Area at 8000h-FFFFh
+				select32KROM(value);
+				break;
+			case 2: // Switchable 16K Area at C000h-FFFFh
+				mmc::bankSwitch(0, 1, (value<<1), (value<<1)+1);
+				break;
+			case 3: // Switchable 16K Area at 8000h-BFFFh
+				mmc::bankSwitch((value<<1), (value<<1)+1, rom::count8KPRG()-2, rom::count8KPRG()-1);
+				break;
+			}
+			break;
+		}
+	}
+
+	bool mmc1Write(const maddr_t addr, const byte_t value)
+	{
+		// And I hope the address is multiple of 0x2000.
+		vassert(0==(addr&0x1FFF));
+
+		const byte_t i=(valueOf(addr)>>13)&3;
+		vassert(i<4);
+		assert(mmc1Sel==INVALID || mmc1Sel==i);
+		mmc1Sel=i;
+
+		if (value&0x80)
+		{
+			// clear shift register
+			mmc1Regs[0].asBitField()=valueOf(mmc1Regs[0])|0xC; // ?
+			mmc1Pos=0;
+			mmc1Tmp=0;
+			mmc1Sel=INVALID;
+			return true;
+		}else
+		{
+			// D1-D7 had better be zero.
+			//vassert(0==(value&0xFE));
+
+			// serial load (LSB first)
+			vassert(mmc1Pos<5);
+			mmc1Tmp&=~(1<<mmc1Pos);
+			mmc1Tmp|=((value&1)<<mmc1Pos);
+
+			// increase position
+			mmc1Pos++;
+			if (mmc1Pos==5)
+			{
+				// fifth write
+				// copy to selected register
+				mmc1Regs[i].asBitField()=mmc1Tmp;
+				mmc1Apply(mmc1Sel);
+				// reset
+				mmc1Pos=0;
+				mmc1Tmp=0; // optional
+				mmc1Sel=INVALID;
+			}
+			return true;
+		}
 		return false;
 	}
 }
@@ -331,6 +469,7 @@ public:
 		tassert(sizeof(ram)==0x10000);
 		tassert(ptr_diff(&ram.bank6[0],&ramData(0))==0x6000);
 		tassert(ptr_diff(ram.page(0x80),&ramData(0))==0x8000);
+		tassert(&ram.code[0]+sizeof(ram.code)==&ramData(0)+sizeof(ram));
 
 		// mapper test
 		tassert(mapper::maskPRG(0,4)==0);

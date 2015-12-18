@@ -870,10 +870,6 @@ jBranch:
 		{
 			assert(addr != 0xCCCC);
 			mmc::write(addr, value);
-			if (addr == 0x04014)
-			{
-				cycles += 513;
-			}
 		}
 
 		cycles += op.cycles;

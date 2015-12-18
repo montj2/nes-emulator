@@ -210,8 +210,7 @@ namespace pmapper
 	// global functions
 	bool setup();
 
-	template <int CHRSize>
-	void selectVROM(const byte_t value, const byte_t bank);
+	void selectVROM(const int CHRSize, const byte_t value, const byte_t bank);
 	void select8KVROM(const byte_t value);
 
 	byte_t maskCHR(byte_t bank, const byte_t count);
