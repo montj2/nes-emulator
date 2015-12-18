@@ -7,13 +7,13 @@ An emulator to play [NES games](https://en.wikipedia.org/wiki/List_of_Nintendo_E
 * Scanline-based rendering
 * Custom log for debug (Disassembly, CPU state, PPU state)
 * Easy to port to other OS and platforms
-* Sound is not supported yet
 
 ## Compatibility List
 * Super Mario Bros.
 * Adventure Island.
-* Many other roms that use mapper 0, 2 or 3
-* Coming soon: Legend of Zelda (using mapper 1/MMC1)
+* Legend of Zelda
+* Mega Man 2
+* Many many other roms that use mapper 0, 1, 2 or 3
 * Coming soon: Super Mario Bros. 3 (using mapper 4/MMC3)
 
 ## Controls
@@ -26,3 +26,6 @@ An emulator to play [NES games](https://en.wikipedia.org/wiki/List_of_Nintendo_E
 * Save State: S
 * Reset: Esc
 * Quit: Ctrl+Esc
+
+## Known limitation
+* Sound is not supported yet
