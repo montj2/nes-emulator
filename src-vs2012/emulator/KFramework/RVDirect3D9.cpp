@@ -2,6 +2,10 @@
 #include "KFramework.h"
 #include "RVDirect3D9.h"
 
+#ifdef _WIN64
+	#define GWL_USERDATA GWLP_USERDATA
+#endif
+
 // Constants
 static const TCHAR g_szClassName[]=_TEXT("VRWindowClass");
 
@@ -530,7 +534,7 @@ LRESULT RVDirect3D9::_wndproc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 LRESULT CALLBACK _wndentry( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 {
-	RVDirect3D9* Me= (RVDirect3D9*)GetWindowLong(hWnd,GWL_USERDATA);
+	RVDirect3D9* Me= (RVDirect3D9*)GetWindowLong(hWnd, GWL_USERDATA);
 	if (Me==NULL)
 	{
 		return DefWindowProc(hWnd,uMsg,wParam,lParam);

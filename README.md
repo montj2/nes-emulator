@@ -26,7 +26,7 @@ An emulator to play [NES games](https://en.wikipedia.org/wiki/List_of_Nintendo_E
 * Load State: L
 * Save State: S
 * Reset: Esc
-* Quit: Ctrl+Esc
+* Quit: Ctrl+Esc (Alt+F4 in DX9 mode)
 
 ## Known limitation
 * Sound is not supported yet

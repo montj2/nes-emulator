@@ -80,7 +80,7 @@ namespace ui
 #endif
 	}
 
-	void CALLBACK FrameTimerCallBack(UINT uID,UINT uMsg,DWORD dwUsers,DWORD dw1,DWORD dw2)
+	void CALLBACK FrameTimerCallBack(UINT uID,UINT uMsg,DWORD_PTR dwUsers,DWORD_PTR dw1,DWORD_PTR dw2)
 	{
 		SetEvent(frameTickEvent);
 	}
@@ -197,11 +197,13 @@ namespace ui
 		if (GetAsyncKeyState(VK_ESCAPE)!=0)
 #endif
 		{
+#ifndef WANT_DX9
 			if (GetAsyncKeyState(VK_CONTROL)!=0)
 			{
 				quitRequired=true;
 			}
 			else
+#endif
 			{
 				ui::reset();
 				emu::reset();
