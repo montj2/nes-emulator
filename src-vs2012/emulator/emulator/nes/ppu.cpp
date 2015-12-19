@@ -264,14 +264,6 @@ namespace mem
 
 namespace render
 {
-	const int SCREEN_WIDTH=256;
-#ifdef SHOW_240_LINES
-	const int SCREEN_HEIGHT=240;
-	const int SCREEN_YOFFSET=0;
-#else
-	const int SCREEN_HEIGHT=224;
-	const int SCREEN_YOFFSET=8;
-#endif
 	const int RENDER_WIDTH=256;
 	const int RENDER_HEIGHT=240;
 

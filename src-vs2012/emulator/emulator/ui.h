@@ -12,6 +12,7 @@ namespace ui
 {
 	// global functions
 	void init();
+	void deinit();
 	void reset();
 
 	void blt32(const uint32_t buffer[],const int width,const int height);
@@ -21,12 +22,18 @@ namespace ui
 	int readInput(const int player);
 	int readInput(const int player, const int button);
 
+	bool isForeground();
+
 	bool forceTerminate();
 
-	void waitForVSync();
+	void limitFPS();
 
-	// global events
+	// global event callbacks
+	void onGameStart();
+	void onGameEnd();
+	
 	void onFrameBegin();
 	void onFrameEnd();
+
 	void doEvents();
 }

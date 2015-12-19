@@ -30,23 +30,27 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 	welcome();
 	usage(argv[0]);
 	TestFramework::instance().runAll();
-	emu::init();
 	ui::init();
+	emu::init();
 	if (argc>=2)
 	{
 		if (emu::load(argv[1]))
 		{
-			// setup modules
-			emu::reset();
+			// setup emulator
+			if (emu::setup())
+			{
+				// create log file
+				FILE *fp = fopen("m:\\log.txt", "wt");
+				debug::setOutputFile(fp);
 
-			// create log file
-			FILE *fp = fopen("log.txt", "wt");
-			debug::setOutputFile(fp);
+				// start execution
+				emu::run();
 
-			// start execution
-			emu::run();
-
-			fclose(fp);
+				fclose(fp);
+			}else
+			{
+				puts("[X] Unable to emulate the rom.");
+			}
 		}else
 		{
 			puts("[X] Unable to load the rom.");
@@ -56,6 +60,7 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 		puts("[!] No rom file specified.");
 	}
 	emu::deinit();
+	ui::deinit();
 	TestFramework::destroy();
 	return 0;
 }

@@ -5,10 +5,13 @@ namespace emu
 	void deinit();
 
 	bool load(const _TCHAR* file);
-	void reset();
+	bool reset();
+	bool setup();
 
 	bool nextFrame();
 	void run();
+
+	long long frameCount();
 
 	// save state
 	void saveState(FILE *fp);

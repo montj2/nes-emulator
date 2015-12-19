@@ -66,15 +66,18 @@
     <ClInclude Include="nes\emu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="stdafx_kfw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="kfw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="types\typetests.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="unittest\framework.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="nes\opcodes.cpp">
@@ -102,6 +105,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx_kfw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="kfwproxy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="unittest\framework.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
