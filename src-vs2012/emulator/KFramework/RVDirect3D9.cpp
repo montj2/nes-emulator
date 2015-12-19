@@ -475,8 +475,8 @@ LRESULT RVDirect3D9::_wndproc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		}
 		break;
 	case WM_GETMINMAXINFO:
-		((MINMAXINFO*)lParam)->ptMinTrackSize.x=320;
-		((MINMAXINFO*)lParam)->ptMinTrackSize.y=240;
+		((MINMAXINFO*)lParam)->ptMinTrackSize.x=m_iWidth/2;
+		((MINMAXINFO*)lParam)->ptMinTrackSize.y=m_iHeight/2;
 		break;
 	case WM_ENTERSIZEMOVE:
 		m_fPaused=true;m_fInSizeMove=true;
