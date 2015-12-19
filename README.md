@@ -5,6 +5,7 @@ An emulator to play [NES games](https://en.wikipedia.org/wiki/List_of_Nintendo_E
 * Robust, Safe, Fast
 * Bug-free CPU emulation
 * Scanline-based rendering
+* Video output using D3D9
 * Custom log for debug (Disassembly, CPU state, PPU state)
 * Easy to port to other OS and platforms
 
@@ -20,7 +21,7 @@ An emulator to play [NES games](https://en.wikipedia.org/wiki/List_of_Nintendo_E
 * Button A: X
 * Button B: Z
 * Left/Right/Up/Down: Arrow Keys
-* Select: Left Shift
+* Select: Shift
 * Start: Enter
 * Load State: L
 * Save State: S
