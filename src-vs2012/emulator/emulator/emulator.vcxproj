@@ -115,7 +115,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;WANT_STATISTICS;WANT_MEM_PROTECTION;SHOW_240_LINES;WANT_DX9;FPS_LIMIT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;WANT_STATISTICS;WANT_MEM_PROTECTION;SHOW_240_LINES;WANT_DX9;FPS_LIMIT;MONITOR_RENDERING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CallingConvention>FastCall</CallingConvention>
       <ExceptionHandling>false</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -135,7 +135,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;WANT_STATISTICS;WANT_MEM_PROTECTION;SHOW_240_LINES;WANT_DX9;FPS_LIMIT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;FAST_TYPE;VERBOSE;FORCE_SAFE_CASTING;WANT_STATISTICS;WANT_MEM_PROTECTION;SHOW_240_LINES;WANT_DX9;FPS_LIMIT;MONITOR_RENDERING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CallingConvention>FastCall</CallingConvention>
       <ExceptionHandling>false</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>

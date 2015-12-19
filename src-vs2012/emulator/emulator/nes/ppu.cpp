@@ -271,7 +271,7 @@ namespace render
 	static palindex_t vBuffer[RENDER_HEIGHT][RENDER_WIDTH];
 	static rgb32_t vBuffer32[SCREEN_HEIGHT*SCREEN_WIDTH];
 
-	static int8_t pendingSprites[8];
+	static int8_t pendingSprites[64];
 	static int pendingSpritesCount;
 	static bool solidPixel[RENDER_WIDTH];
 
@@ -531,15 +531,11 @@ namespace render
 			// find sprites that are within y range for the scanline
 			const int sprHeight=control[PPUCTRL::LARGE_SPRITE]?16:8;
 
-			if (scanline==239)
-			{
-				scanline=239;
-			}
 			for (int i=63;i>=0;i--)
 			{
 				if (oamSprite(i).yminus1<scanline && oamSprite(i).yminus1+sprHeight>=scanline)
 				{
-#ifndef NO_SPRITE_LIMIT
+#ifdef SPRITE_LIMIT
 					if (pendingSpritesCount>=8)
 					{
 						// more than 8 sprites appear in this scanline
