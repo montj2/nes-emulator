@@ -17,6 +17,8 @@ public:
 	RVDirect3D9(const UINT width,const UINT height,const DWORD format,const int bitCount,const int numBuffers,const TCHAR* title,const bool autorender=false);
 	~RVDirect3D9();
 
+	// queue state & operation
+	bool empty() const {return m_head==m_tail;}
 	bool write(const unsigned char* buf,const int idx,const bool fwait=true);
 	bool push(const unsigned char* buf,const bool fwait=true);
 	bool flip();
@@ -25,6 +27,8 @@ public:
 	bool isPaused() const {return m_fPaused;}
 	bool isActive() const {return m_fActive;}
 	bool isClosed() const {return m_hWnd==NULL;}
+
+	void waitUntilActive() {if (!m_fActive) m_evtActive.wait();}
 
 	__int64 getFrameCount() const {return m_nFrames;}
 
@@ -82,6 +86,7 @@ private:
 	KEvent m_evtCreation;
 	KEvent m_evtRestored;
 	KEvent m_evtBufferFree;
+	KEvent m_evtActive;
 
 	virtual DWORD _run(void);
 	bool _create(void);

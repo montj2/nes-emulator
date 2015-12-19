@@ -8,8 +8,14 @@ static const TCHAR g_szClassName[]=_TEXT("VRWindowClass");
 // Global variables
 void* RVDirect3D9::g_pD3D=NULL;
 
-RVDirect3D9::RVDirect3D9(const UINT width,const UINT height,const DWORD format,const int bitCount,const int numBuffers,const TCHAR* title,const bool autorender): \
-	m_pd3dDevice(NULL),m_hWnd(NULL),m_iWidth(width),m_iHeight(height),m_nBuffers(numBuffers),m_iFormat(format),m_iBitCount(bitCount),m_strTitle(title),m_fAutoRender(autorender), \
+RVDirect3D9::RVDirect3D9(const UINT width, const UINT height, 
+						 const DWORD format, const int bitCount, 
+						 const int numBuffers, 
+						 const TCHAR* title,
+						 const bool autorender):
+	m_pd3dDevice(NULL), m_hWnd(NULL), m_iWidth(width), m_iHeight(height), m_nBuffers(numBuffers),
+	m_iFormat(format), m_iBitCount(bitCount), m_evtActive(FALSE, TRUE),
+	m_strTitle(title),m_fAutoRender(autorender), \
 	IRunnable(true)
 {
 	assert(width>0 && height>0 && numBuffers>=1 && numBuffers<=5 && title!=NULL);
@@ -179,14 +185,18 @@ bool RVDirect3D9::_onResetDevice(void)
 	{
 		IDirect3DSurface9* tmp;
 		hr=device.CreateOffscreenPlainSurface(m_iWidth,m_iHeight,fmt,D3DPOOL_DEFAULT,&tmp,NULL);
-		assert(SUCCEEDED(hr));
-		InterlockedExchange((PULONG)(&m_pd3dImageSurface[i]),(ULONG)tmp);
+		if (!SUCCEEDED(hr)) break;
+		m_pd3dImageSurface[i]=tmp;
 	}
 	if (SUCCEEDED(hr))
 	{
 		m_evtRestored.set();
 		return true;
-	}else return false;
+	}else
+	{
+		m_fDeviceError=true;
+		return false;
+	}
 }
 
 
@@ -221,7 +231,7 @@ bool RVDirect3D9::push(const unsigned char* buf,const bool fwait)
 	assert(m_cur!=m_head);
 	if (write(buf,m_cur))
 	{
-		InterlockedExchange(&m_tail,m_cur);
+		m_tail=m_cur;
 		return true;
 	}else
 		return false;
@@ -232,12 +242,14 @@ bool RVDirect3D9::flip(void)
 {
 	volatile ULONG m_cur;
 	AUTO_LOCK(m_mtx_flip);
-	if (m_head==m_tail) return false;// empty
+	if (empty()) return false;
+
+	// next buffer
 	m_cur=(m_head+1)%m_nBuffers;
 	assert(m_cur!=m_head);
 	if (_render())
 	{
-		InterlockedExchange(&m_head,m_cur);
+		m_head=m_cur;
 		if (m_head==m_tail) m_evtBufferFree.pulse();
 		return true;
 	}else return false;
@@ -493,6 +505,7 @@ LRESULT RVDirect3D9::_wndproc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		break;
 	case WM_ACTIVATEAPP:
 		m_fActive=(wParam==TRUE);
+		if (m_fActive) m_evtActive.set();
 		break;
 	case WM_CLOSE:
 		DestroyWindow(hWnd);

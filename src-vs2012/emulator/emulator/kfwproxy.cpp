@@ -38,8 +38,19 @@ namespace dx9render
 
 	bool draw32(const void* buffer)
 	{
+		assert(!renderer->hasError());
 		if (!renderer->push((const unsigned char*)buffer, false))
+		{
+			// maybe queue full or paused
 			while (!renderer->flip());
+			// push again
+			if (!renderer->push((const unsigned char*)buffer, false))
+			{
+				assert(0);
+				return false;
+			}
+		}
+		while (renderer->flip());
 		return true;
 	}
 
@@ -61,6 +72,16 @@ namespace dx9render
 	bool closed()
 	{
 		return renderer->isClosed();
+	}
+
+	bool error()
+	{
+		return renderer->hasError();
+	}
+
+	void wait()
+	{
+		renderer->waitUntilActive();
 	}
 
 	bool keyUp(int k)

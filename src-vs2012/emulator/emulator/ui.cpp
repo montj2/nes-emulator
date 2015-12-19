@@ -136,9 +136,8 @@ namespace ui
 		// printf("Frame %I64d\n", emu::frameCount());
 	}
 
-	void doEvents()
+	void readKeyboardState()
 	{
-		// read keyboard state
 		for (int p=0;p<2;p++)
 		{
 			if (hasInput(p))
@@ -177,6 +176,19 @@ namespace ui
 				}
 			}
 		}
+	}
+
+	void doEvents()
+	{
+#ifdef PAUSE_WHEN_INACTIVE
+#ifdef WANT_DX9
+		if (!dx9render::active())
+			dx9render::wait();
+#endif
+#endif
+
+		// read keyboard state
+		readKeyboardState();
 
 		// hotkeys
 #ifdef WANT_DX9
@@ -200,38 +212,32 @@ namespace ui
 		}
 
 #ifdef WANT_DX9
-		quitRequired=dx9render::closed();
+		if (dx9render::keyPressed('S'))
+		{
+			FILE *fp=fopen("default.sav","wb");
+			emu::saveState(fp);
+			fclose(fp);
+			puts("State saved");
+		}else if (dx9render::keyPressed('L'))
+		{
+			FILE *fp=fopen("default.sav","rb");
+			if (fp!=nullptr)
+			{
+				ui::reset(); // necessary
+				emu::loadState(fp);
+				puts("State loaded");
+				fclose(fp);
+			}else
+			{
+				puts("Previous state not found");
+			}
+		}
 #endif
 
-		static int lastState;
-		if (lastState==0)
-		{
-			if (GetAsyncKeyState('S'))
-			{
-				lastState=1;
-				puts("Save State");
-				FILE *fp=fopen("default.sav","wb");
-				emu::saveState(fp);
-				fclose(fp);
-			}else if (GetAsyncKeyState('L'))
-			{
-				lastState=2;
-				puts("Load State");
-				FILE *fp=fopen("default.sav","rb");
-				if (fp!=nullptr)
-				{
-					ui::reset();
-					emu::loadState(fp);
-					fclose(fp);
-				}else
-				{
-					puts("state not found");
-				}
-			}
-		}else if (!GetAsyncKeyState('S') && !GetAsyncKeyState('L'))
-		{
-			lastState=0;
-		}
+#ifdef WANT_DX9
+		// exit on window close or device error
+		quitRequired|=dx9render::closed() || dx9render::error();
+#endif
 	}
 
 	void limitFPS()
@@ -239,6 +245,7 @@ namespace ui
 #ifdef FPS_LIMIT
 		WaitForSingleObject(frameTickEvent, 1000/MAX_FPS);
 		return;
+		
 		/*
 			long long msToWait = 1000/MAX_FPS-(GetTickCount64()-frameStartTime);
 			if (msToWait>0 && msToWait<1000)

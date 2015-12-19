@@ -13,6 +13,9 @@ namespace dx9render
 	bool active();
 	bool paused();
 	bool closed();
+	bool error();
+
+	void wait();
 
 	bool keyPressed(int key);
 	bool keyUp(int key);
