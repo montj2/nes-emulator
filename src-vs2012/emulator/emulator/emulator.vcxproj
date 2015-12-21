@@ -197,7 +197,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;FAST_TYPE;ALLOW_ADDRESS_WRAP;FPS_LIMIT;WANT_DX9;PAUSE_WHEN_INACTIVE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;FAST_TYPE;ALLOW_ADDRESS_WRAP;FPS_LIMIT;WANT_DX9;PAUSE_WHEN_INACTIVE;LEFT_CLIP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CallingConvention>FastCall</CallingConvention>
       <DisableSpecificWarnings>4146;4530</DisableSpecificWarnings>
       <ExceptionHandling>false</ExceptionHandling>

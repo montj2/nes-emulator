@@ -388,7 +388,11 @@ namespace render
 
 	static bool leftClipping()
 	{
+#ifdef LEFT_CLIP
+		return true;
+#else
 		return mask[PPUMASK::BG_CLIP8] || mask[PPUMASK::SPR_CLIP8];
+#endif
 	}
 
 	static void present()
@@ -402,9 +406,11 @@ namespace render
 			// look up each pixel
 			rgb32_t* vBuf32=vBuffer32;
 			const palindex_t* vBufIdx=&vBuffer[SCREEN_YOFFSET][0];
-			for (int i=0;i<SCREEN_HEIGHT*SCREEN_WIDTH;i++)
+			for (int i=0;i<SCREEN_HEIGHT;i++)
 			{
-				*vBuf32++=p32[valueOf(*vBufIdx++)];
+				vBufIdx+=SCREEN_XOFFSET;
+				for (int j=0;j<SCREEN_WIDTH;j++)
+					*vBuf32++=p32[valueOf(*vBufIdx++)];
 			}
 		}
 		
@@ -1010,6 +1016,7 @@ namespace pmapper
 		case 1: // Mapper 1: MMC1
 		case 2: // Mapper 2: UNROM - PRG/16K
 		case 3: // Mapper 3: CNROM - VROM/8K
+		case 7: // Mapper 7: AOROM - PRG/32K, Name Table Select
 			if (rom::sizeOfVROM()>=0x2000) // 8K of texture or more
 				mem::bankSwitch(0, 0, 8);
 			else if (rom::sizeOfVROM()>0)

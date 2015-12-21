@@ -65,7 +65,13 @@ inline rgb32_t Rgb32(const byte_t r,const byte_t g,const byte_t b)
 }
 
 // hardware configuration
-const int SCREEN_WIDTH=256;
+#ifndef LEFT_CLIP
+	const int SCREEN_WIDTH=256;
+	const int SCREEN_XOFFSET=0;
+#else
+	const int SCREEN_WIDTH=248;
+	const int SCREEN_XOFFSET=8;
+#endif
 #ifdef SHOW_240_LINES
 	const int SCREEN_HEIGHT=240;
 	const int SCREEN_YOFFSET=0;

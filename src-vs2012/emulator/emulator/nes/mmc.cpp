@@ -287,6 +287,7 @@ namespace mapper
 		case 0: // no mapper
 		case 2: // Mapper 2: UNROM - PRG/16K
 		case 3: // Mapper 3: CNROM - VROM/8K
+		case 7: // Mapper 7: AOROM - PRG/32K, Name Table Select
 			if (rom::sizeOfImage() >= 0x8000) // 32K of code or more
 				mmc::bankSwitch(0, 1, 2, 3);
 			else if (rom::sizeOfImage() == 0x4000) // 16K of code
@@ -349,6 +350,10 @@ invalidROMSize:
 			return true;
 		case 3: // Mapper 3: Select 8K VROM
 			pmapper::select8KVROM(value&3);
+			return true;
+		case 7: // Mapper 7: Select 32K ROM & Name Table Select
+			select32KROM(value&7);
+			rom::setMirrorMode((value&16)?MIRRORING::HSINGLESCREEN:MIRRORING::LSINGLESCREEN);
 			return true;
 		}
 		FATAL_ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "addr", valueOf(addr), "value", value, "mapper", rom::mapperType());
