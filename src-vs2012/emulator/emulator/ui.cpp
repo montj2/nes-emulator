@@ -207,6 +207,7 @@ namespace ui
 			{
 				ui::reset();
 				emu::reset();
+				emu::setup();
 			}
 		}else
 		{

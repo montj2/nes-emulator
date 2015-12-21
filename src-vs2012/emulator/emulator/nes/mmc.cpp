@@ -32,7 +32,7 @@ namespace mmc
 		{
 			// perform update
 			memcpy(dest, rom::getImage()+current*0x2000, 0x2000);
-			current=prev;
+			prev=current;
 		}
 	}
 
@@ -65,22 +65,40 @@ namespace mmc
 		fwrite(&pC, sizeof(pC), 1, fp);
 		fwrite(&pE, sizeof(pE), 1, fp);
 
-		// code&data in memory
+		// data in memory
 		fwrite(ram.bank0, sizeof(ram.bank0), 1, fp);
+		fwrite(ram.bank6, sizeof(ram.bank6), 1, fp);
+
+#ifdef SAVE_COMPLETE_MEMORY
+		// code in memory
 		fwrite(ram.code, sizeof(ram.code), 1, fp);
+#endif
 	}
 	
 	void load(FILE *fp)
 	{
 		// bank-switching state
-		fread(&p8, sizeof(p8), 1, fp);
-		fread(&pA, sizeof(pA), 1, fp);
-		fread(&pC, sizeof(pC), 1, fp);
-		fread(&pE, sizeof(pE), 1, fp);
+		int r8, rA, rC, rE;
+		fread(&r8, sizeof(r8), 1, fp);
+		fread(&rA, sizeof(rA), 1, fp);
+		fread(&rC, sizeof(rC), 1, fp);
+		fread(&rE, sizeof(rE), 1, fp);
 
-		// code&data in memory
+		// data in memory
 		fread(ram.bank0, sizeof(ram.bank0), 1, fp);
-		fread(ram.code, sizeof(ram.code), 1, fp);
+		fread(ram.bank6, sizeof(ram.bank6), 1, fp);
+
+#ifdef SAVE_COMPLETE_MEMORY
+		// code in memory
+		fwrite(ram.code, sizeof(ram.code), 1, fp);
+		p8 = r8;
+		pA = rA;
+		pC = rC;
+		pE = rE;
+#else
+		// restore code
+		bankSwitch(r8, rA, rC, rE);
+#endif
 	}
 
 	opcode_t fetchOpcode(maddr_t& pc)

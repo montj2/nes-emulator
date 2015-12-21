@@ -34,6 +34,8 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 	emu::init();
 	if (argc>=2)
 	{
+		// reset emulator
+		emu::reset();
 		if (emu::load(argv[1]))
 		{
 			// setup emulator
@@ -44,7 +46,10 @@ int _cdecl _tmain(int argc, _TCHAR* argv[])
 				debug::setOutputFile(fp);
 
 				// start execution
+				ui::onGameStart();
 				emu::run();
+
+				ui::onGameEnd();
 
 				fclose(fp);
 			}else

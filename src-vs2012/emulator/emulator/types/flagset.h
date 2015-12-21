@@ -104,6 +104,11 @@ public:
 	}
 
 	// advanced bit manipulation
+	T mask(const ET e) const
+	{
+		return _value&((T)e);
+	}
+
 	T select(const ET e) const
 	{
 		return SELECT_FIELD(_value, (T)e);

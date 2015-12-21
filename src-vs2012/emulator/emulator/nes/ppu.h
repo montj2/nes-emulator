@@ -48,6 +48,7 @@ enum class PPUADDR {
 
     BANK=0x3000/*0xF000*/,
     BANK_OFFSET=0x0FFF,
+	UNUSED=0xC000,
 
 	PAL_SELECT=0x10,
 	PAL_NUM=0xC,

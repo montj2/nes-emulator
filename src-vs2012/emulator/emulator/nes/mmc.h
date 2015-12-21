@@ -22,15 +22,15 @@ private:
     uint8_t __ext[0x1000];
 
 public:
+	// $6000 SaveRAM
+	uint8_t bank6[8192];
+
 	union
 	{
-		uint8_t code[0xA000];
+		uint8_t code[0x8000];
 
 		struct
 		{
-			// $6000 SaveRAM
-			uint8_t bank6[8192];
-
 			// $8000 PRG-ROM (8K per bank, 4 built-in banks)
 			uint8_t bank8[8192], bankA[8192];
 

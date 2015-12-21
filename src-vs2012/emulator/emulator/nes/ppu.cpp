@@ -75,11 +75,50 @@ namespace mem
 		memset(&vram,0,sizeof(vram));
 		memset(&oam,0,sizeof(oam));
 	}
+
+	static void copyBanks(const int dest, const int src, const int count)
+	{
+		assert((dest+count)*0x400<=0x2000);
+		assert((src+count)*0x400<=(int)rom::sizeOfVROM());
+		memcpy(&vramData(dest*0x400), rom::getVROM()+src*0x400, count*0x400);
+	}
+
+	void bankSwitch(const int dest, const int src, const int count)
+	{
+		assert(dest>=0 && dest+count<=8);
+		assert(src!=INVALID && src>=0);
+		for (int i=0; i<count; i++)
+		{
+			if (prevBankSrc[dest+i]!=src+i)
+			{
+				prevBankSrc[dest+i]=src+i;
+				copyBanks(dest+i, src+i, 1);
+			}
+		}
+	}
 	
+	static bool saveCompleteMemory()
+	{
+#ifdef SAVE_COMPLETE_MEMORY
+		return true;
+#else
+		// force complete memory dump when CHR banks don't exist in the rom.
+		return (rom::count8KCHR() == 0);
+#endif
+	}
+
 	static void save(FILE *fp)
 	{
 		// memory
-		fwrite(&vram, sizeof(vram), 1, fp);
+		if (saveCompleteMemory())
+		{
+			fwrite(&vram, sizeof(vram), 1, fp);
+		}else
+		{
+			// skip vrom
+			fwrite(&vram.nameTables, sizeof(vram.nameTables), 1, fp);
+			fwrite(&vram.pal, sizeof(vram.pal), 1, fp);
+		}
 		fwrite(&oam, sizeof(oam), 1, fp);
 		
 		// toggle
@@ -95,7 +134,15 @@ namespace mem
 	static void load(FILE *fp)
 	{
 		// memory
-		fread(&vram, sizeof(vram), 1, fp);
+		if (saveCompleteMemory())
+		{
+			fread(&vram, sizeof(vram), 1, fp);
+		}else
+		{
+			// skip vrom
+			fread(&vram.nameTables, sizeof(vram.nameTables), 1, fp);
+			fread(&vram.pal, sizeof(vram.pal), 1, fp);
+		}
 		fread(&oam, sizeof(oam), 1, fp);
 
 		// toggle
@@ -105,24 +152,17 @@ namespace mem
 		fread(&latch, sizeof(latch), 1, fp);
 
 		// bank-switching state
-		fread(prevBankSrc, sizeof(prevBankSrc), 1, fp);
-	}
-
-	static void copyBanks(const int dest, const int src, const int count)
-	{
-		assert((dest+count)*0x400<=0x2000);
-		assert((src+count)*0x400<=(int)rom::sizeOfVROM());
-		memcpy(&vramData(dest*0x400), rom::getVROM()+src*0x400, count*0x400);
-	}
-
-	void bankSwitch(const int dest, const int src, const int count)
-	{
-		for (int i=0; i<count; i++)
+		if (saveCompleteMemory())
 		{
-			if (prevBankSrc[dest+i]!=src+i)
+			fread(prevBankSrc, sizeof(prevBankSrc), 1, fp);
+		}else
+		{
+			int bankSrc[8];
+			STATIC_ASSERT(sizeof(bankSrc) == sizeof(prevBankSrc));
+			fread(bankSrc, sizeof(bankSrc), 1, fp);
+			for (int i=0;i<8;i++)
 			{
-				prevBankSrc[dest+i]=src+i;
-				copyBanks(dest+i, src+i, 1);
+				bankSwitch(i, bankSrc[i], 1);
 			}
 		}
 	}
@@ -151,7 +191,7 @@ namespace mem
 
 	static vaddr_t mirror(vaddr_flag_t vaddr, bool forRead=true)
 	{
-		assert((valueOf(vaddr)>>14)==0);
+		assert(address.mask(PPUADDR::UNUSED)==0);
 		switch (vaddr.select(PPUADDR::BANK))
 		{
 		case 0:
@@ -187,12 +227,13 @@ namespace mem
 			}
 			break;
 		}
+		vaddr.clear(PPUADDR::UNUSED);
 		return vaddr;
 	}
 
 	static void incAddress()
 	{
-		assert(valueOf(address)>>14==0);
+		assert(address.mask(PPUADDR::UNUSED)==0);
 		address.asBitField()+=control[PPUCTRL::VERTICAL_WRITE]?32:1;
 	}
 
@@ -249,14 +290,20 @@ namespace mem
 	static void write(const byte_t data)
 	{
 		// make sure it's safe to write
-#ifdef WANT_MEM_PROTECTION
-		//assert(canWrite());
-#endif
+		// assert(canWrite());
+
 		const vaddr_t addr=mirror(address, false);
 		{
 			// ?
 			// resetToggle();
 		}
+#ifdef WANT_MEM_PROTECTION
+		if (rom::count8KCHR()>0)
+		{
+			// don't allow writes to vrom if the rom file has any CHR-ROM data.
+			ERROR_IF(addr<0x2000, INVALID_MEMORY_ACCESS, MEMORY_CANT_BE_WRITTEN, "vaddress", valueOf(address), "actual vaddress", valueOf(addr));
+		}
+#endif
 		vramData(addr)=data;
 		incAddress();
 	}
@@ -520,6 +567,7 @@ namespace render
 		}
 	}
 
+	int visibleSpriteCount=0;
 	static void evaluateSprites()
 	{
 		pendingSpritesCount=0;
@@ -549,6 +597,14 @@ namespace render
 				}
 			}
 
+#ifdef MONITOR_RENDERING
+			visibleSpriteCount=0;
+			for (int i=63;i>=0;i--)
+			{
+				if (oamSprite(i).yminus1<239)
+					visibleSpriteCount++;
+			}
+#endif
 			for (int i=0;i<RENDER_WIDTH;i++)
 			{
 				solidPixel[i]=((vBuffer[scanline][i]&3)!=0);
@@ -624,6 +680,8 @@ namespace render
 							}
 						}
 					}
+
+					//if (!behindBG) vBuffer[scanline][X]=color;
 				}
 			}
 		}
@@ -636,12 +694,13 @@ namespace render
 			if (scanline>=0 && scanline<=239)
 			{
 			#ifdef MONITOR_RENDERING
-				printf("[P] --- Scanline %03d --- Sprite 0: (%d, %d) %c%c%c Scroll=[%3d,%3d]\n", scanline, oamSprite(0).x, oamSprite(0).yminus1+1, 
+				printf("[P] --- Scanline %03d --- Sprite 0: (%d, %d) %c%c%c Scroll=[%3d,%3d] %d visible\n", scanline, oamSprite(0).x, oamSprite(0).yminus1+1, 
 					(rom::mirrorMode()==MIRRORING::HORIZONTAL)?'H':'V',
 					mask[PPUMASK::SPR_VISIBLE]?'S':'-',
 					mask[PPUMASK::BG_VISIBLE]?'B':'-',
 					scroll(PPUADDR::XSCROLL)*8+xoffset,
-					scroll(PPUADDR::YSCROLL)*8+scroll(PPUADDR::YOFFSET));
+					scroll(PPUADDR::YSCROLL)*8+scroll(PPUADDR::YOFFSET),
+					visibleSpriteCount);
 			#endif
 				drawBackground();
 				evaluateSprites();

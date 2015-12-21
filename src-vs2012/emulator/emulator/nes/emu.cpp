@@ -33,32 +33,24 @@ namespace emu
 		return rom::load(file);
 	}
 
-	bool reset()
+	void reset()
 	{
-		// setup mmc
+		// reset mmc
 		mmc::reset();
 		mapper::reset();
-		if (!mapper::setup()) return false;
 
-		// setup cpu
+		// reset cpu
 		cpu::reset();
 
-		// setup ppu
+		// reset ppu
 		ppu::reset();
-		if (!pmapper::setup()) return false;
-
-		return true;
 	}
 
 	bool setup()
 	{
-		if (reset())
-		{
-			ui::onGameStart();
-			return true;
-		}
-
-		return false;
+		if (!mapper::setup()) return false;
+		if (!pmapper::setup()) return false;
+		return true;
 	}
 
 	bool nextFrame()
@@ -97,7 +89,6 @@ namespace emu
 			}
 			ui::limitFPS();
 		}
-		ui::onGameEnd();
 	}
 
 	long long frameCount()
