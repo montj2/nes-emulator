@@ -75,3 +75,4 @@ Ankh.NoLoad
 #Emulator logs
 *.log
 *.txt
+*.user
