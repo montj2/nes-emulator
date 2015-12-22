@@ -15,7 +15,7 @@ namespace ui
 	void deinit();
 	void reset();
 
-	void blt32(const uint32_t buffer[],const int width,const int height);
+	void blt32(const uint32_t buffer[], const int width, const int height);
 
 	bool hasInput(const int player);
 	void resetInput();

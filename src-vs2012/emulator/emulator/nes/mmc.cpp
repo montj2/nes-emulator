@@ -9,6 +9,7 @@
 #include "debug.h"
 #include "rom.h"
 #include "mmc.h"
+#include "cpu.h"
 #include "ppu.h"
 
 #include "../ui.h"
@@ -21,6 +22,8 @@ namespace mmc
 {
 	// addresses of currently selected prg-rom banks.
 	static int p8, pA, pC, pE;
+
+	static bool sramEnabled;
 
 	static void updateBank(uint8_t * const dest, int& prev, int current)
 	{
@@ -45,6 +48,11 @@ namespace mmc
 		if (regE!=INVALID) updateBank(ram.bankE, pE, regE);
 	}
 
+	void setSRAMEnabled(bool v)
+	{
+		sramEnabled=v;
+	}
+
 	void reset()
 	{
 		// no prg-rom selected now
@@ -52,6 +60,9 @@ namespace mmc
 		pA=INVALID;
 		pC=INVALID;
 		pE=INVALID;
+
+		// SRAM is disabled by default
+		sramEnabled = false;
 
 		// clear memory
 		memset(&ram,0,sizeof(ram));
@@ -251,6 +262,14 @@ namespace mapper
 	static flag_set<ioreg_t, MMC1REG, 5> mmc1Regs[4];
 	#define mmc1Cfg mmc1Regs[0]
 
+	// MMC3 registers
+	static ioreg_t mmc3Control;
+	static ioreg_t mmc3Cmd;
+	static ioreg_t mmc3Data;
+	static ioreg_t mmc3Counter;
+	static ioreg_t mmc3Latch;
+	static bool mmc3IRQ;
+
 	void reset()
 	{
 		// MMC1
@@ -262,6 +281,13 @@ namespace mapper
 			mmc1Regs[i].clearAll();
 		}
 
+		// MMC3
+		mmc3Control=INVALID;
+		mmc3Cmd=0;
+		mmc3Data=0;
+		mmc3Counter=0;
+		mmc3Latch=INVALID;
+		mmc3IRQ=false;
 	}
 
 	void load(FILE* fp)
@@ -270,6 +296,13 @@ namespace mapper
 		fread(&mmc1Pos, sizeof(mmc1Pos), 1, fp);
 		fread(&mmc1Tmp, sizeof(mmc1Tmp), 1, fp);
 		fread(&mmc1Regs, sizeof(mmc1Regs), 1, fp);
+
+		fread(&mmc3Control, sizeof(mmc3Control), 1, fp);
+		fread(&mmc3Cmd, sizeof(mmc3Cmd), 1, fp);
+		fread(&mmc3Data, sizeof(mmc3Data), 1, fp);
+		fread(&mmc3Counter, sizeof(mmc3Counter), 1, fp);
+		fread(&mmc3Latch, sizeof(mmc3Latch), 1, fp);
+		fread(&mmc3IRQ, sizeof(mmc3IRQ), 1, fp);
 	}
 
 	void save(FILE* fp)
@@ -278,6 +311,13 @@ namespace mapper
 		fwrite(&mmc1Pos, sizeof(mmc1Pos), 1, fp);
 		fwrite(&mmc1Tmp, sizeof(mmc1Tmp), 1, fp);
 		fwrite(&mmc1Regs, sizeof(mmc1Regs), 1, fp);
+
+		fwrite(&mmc3Control, sizeof(mmc3Control), 1, fp);
+		fwrite(&mmc3Cmd, sizeof(mmc3Cmd), 1, fp);
+		fwrite(&mmc3Data, sizeof(mmc3Data), 1, fp);
+		fwrite(&mmc3Counter, sizeof(mmc3Counter), 1, fp);
+		fwrite(&mmc3Latch, sizeof(mmc3Latch), 1, fp);
+		fwrite(&mmc3IRQ, sizeof(mmc3IRQ), 1, fp);
 	}
 
 	bool setup()
@@ -301,6 +341,13 @@ invalidROMSize:
 			return true;		
 		case 1: // Mapper 1: MMC1
 			if (rom::count16KPRG()>=1 && rom::count16KPRG()<=16) // at least 16K of code, at most 256K of code
+			{
+				mmc::bankSwitch(0, 1, rom::count8KPRG()-2, rom::count8KPRG()-1);
+				return true;
+			}
+			goto invalidROMSize;
+		case 4: // Mapper 4: MMC3 - PRG/8K, VROM/2K/1K, VT, SRAM, IRQ
+			if (rom::count8KPRG()>=2)
 			{
 				mmc::bankSwitch(0, 1, rom::count8KPRG()-2, rom::count8KPRG()-1);
 				return true;
@@ -351,6 +398,8 @@ invalidROMSize:
 		case 3: // Mapper 3: Select 8K VROM
 			pmapper::select8KVROM(value&3);
 			return true;
+		case 4: // MMC3:
+			return mmc3Write(addr, value);
 		case 7: // Mapper 7: Select 32K ROM & Name Table Select
 			select32KROM(value&7);
 			rom::setMirrorMode((value&16)?MIRRORING::HSINGLESCREEN:MIRRORING::LSINGLESCREEN);
@@ -358,6 +407,16 @@ invalidROMSize:
 		}
 		FATAL_ERROR(INVALID_MEMORY_ACCESS, MAPPER_FAILURE, "addr", valueOf(addr), "value", value, "mapper", rom::mapperType());
 		return false;
+	}
+
+	void HBlank()
+	{
+		switch (rom::mapperType())
+		{
+			case 4: // MMC3:
+				mmc3HBlank();
+				break;
+		}
 	}
 
 	// various mapper handlers
@@ -474,6 +533,106 @@ invalidROMSize:
 			return true;
 		}
 		return false;
+	}
+
+	static void mmc3Apply()
+	{
+		FATAL_ERROR_IF(mmc3Control==INVALID, ILLEGAL_OPERATION, MAPPER_FAILURE, "mmc3data", mmc3Data);
+		
+		const bool CHRSelect=(mmc3Control&0x80)==0x80;
+		const bool PRGSelect=(mmc3Control&0x40)==0x40;
+
+		switch (mmc3Cmd) // Command Number
+		{
+		case 0: // Select 2x1K VROM at PPU 0000h-07FFh
+			//assert(0==(mmc3Data&1));
+			//pmapper::selectVROM(2, mmc3Data>>1, CHRSelect?2:0); 
+			pmapper::selectVROM(1, mmc3Data, CHRSelect?4:0);  
+			pmapper::selectVROM(1, mmc3Data+1, CHRSelect?5:1);
+			break;
+		case 1: // Select 2x1K VROM at PPU 0800h-0FFFh
+			//assert(0==(mmc3Data&1));
+			//pmapper::selectVROM(2, mmc3Data>>1, CHRSelect?3:1); 
+			pmapper::selectVROM(1, mmc3Data, CHRSelect?6:2); 
+			pmapper::selectVROM(1, mmc3Data+1, CHRSelect?7:3); 
+			break;
+		case 2: // Select 1K VROM at PPU 1000h-13FFh
+			pmapper::selectVROM(1, mmc3Data, CHRSelect?0:4);
+			break;
+		case 3: // Select 1K VROM at PPU 1400h-17FFh
+			pmapper::selectVROM(1, mmc3Data, CHRSelect?1:5);
+			break;
+		case 4: // Select 1K VROM at PPU 1800h-1BFFh
+			pmapper::selectVROM(1, mmc3Data, CHRSelect?2:6);
+			break;
+		case 5: // Select 1K VROM at PPU 1C00h-1FFFh
+			pmapper::selectVROM(1, mmc3Data, CHRSelect?3:7);
+			break;
+		case 6: // Select 8K ROM at 8000h-9FFFh
+			if (!PRGSelect)
+				mmc::bankSwitch(mmc3Data, INVALID, rom::count8KPRG()-2, rom::count8KPRG()-1);
+			else
+				mmc::bankSwitch(rom::count8KPRG()-2, INVALID, mmc3Data, rom::count8KPRG()-1);
+			break;
+		case 7: // Select 8K ROM at A000h-BFFFh
+			if (!PRGSelect)
+				mmc::bankSwitch(INVALID, mmc3Data, rom::count8KPRG()-2, rom::count8KPRG()-1);
+			else
+				mmc::bankSwitch(rom::count8KPRG()-2, mmc3Data, INVALID, rom::count8KPRG()-1);
+			break;
+		}
+	}
+
+	bool mmc3Write(const maddr_t addr, const byte_t value)
+	{
+		switch (valueOf(addr))
+		{
+		case 0x8000: // Index/Control (5bit)
+			mmc3Cmd=value&7;
+			mmc3Control=value;
+			return true;
+		case 0x8001: // Data Register
+			mmc3Data=value;
+			mmc3Apply();
+			return true;
+		case 0xA000: // Mirroring Select
+			rom::setMirrorMode((value&1)?MIRRORING::HORIZONTAL:MIRRORING::VERTICAL);
+			return true;
+		case 0xA001: // SaveRAM Toggle
+			mmc::setSRAMEnabled((value&1)==1);
+			return true;
+		case 0xC000: // IRQ Counter Register
+			mmc3Counter=value;
+			return true;
+		case 0xC001: // IRQ Latch Register
+			mmc3Latch=value;
+			return true;
+		case 0xE000: // IRQ Control Register 0
+			mmc3IRQ=false;
+			mmc3Counter=mmc3Latch;
+			return true;
+		case 0xE001: // IRQ Control Register 1
+			mmc3IRQ=true;
+			return true;
+		}
+		return false;
+	}
+
+	void mmc3HBlank()
+	{
+		if (ppu::currentScanline()==-1)
+			mmc3Counter=mmc3Latch;
+		else if (ppu::currentScanline()>=0 && ppu::currentScanline()<=239)
+		{
+			if (mmc3IRQ && render::enabled())
+			{
+				mmc3Counter=(mmc3Counter-1)&0xFF;
+				if (!mmc3Counter)
+				{
+					cpu::irq(IRQTYPE::IRQ);
+				}
+			}
+		}
 	}
 }
 

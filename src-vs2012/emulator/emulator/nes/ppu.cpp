@@ -10,7 +10,8 @@
 #include "rom.h"
 #include "cpu.h"
 #include "ppu.h"
-#include "../ui.h"
+#include "mmc.h"
+#include "emu.h"
 
 // PPU Memory
 __declspec(align(0x1000))
@@ -241,7 +242,7 @@ namespace mem
 	{
 		if (firstWrite) // higher 6 bits
 		{
-			vassert((byte&~0x3F)==0);
+			//vassert((byte&~0x3F)==0);
 			tmpAddress.update<PPUADDR::HIGH_BYTE>(byte&0x3F);
 
 			// store in Reload register temporarily
@@ -321,6 +322,7 @@ namespace render
 	static int8_t pendingSprites[64];
 	static int pendingSpritesCount;
 	static bool solidPixel[RENDER_WIDTH];
+	static bool spritePixel[RENDER_WIDTH];
 
 	static void setScroll(const byte_t byte)
 	{
@@ -333,7 +335,6 @@ namespace render
 		{
 			// set vertical scroll
 			scroll.update<PPUADDR::YOFFSET>(byte&7);
-			assert((byte>>3)<30);
 			scroll.update<PPUADDR::YSCROLL>(byte>>3);
 		}
 	}
@@ -381,12 +382,12 @@ namespace render
 		memset(pendingSprites, -1, sizeof(pendingSprites));	
 	}
 
-	static bool enabled()
+	bool enabled()
 	{
 		return mask[PPUMASK::BG_VISIBLE] || mask[PPUMASK::SPR_VISIBLE];
 	}
 
-	static bool leftClipping()
+	bool leftClipping()
 	{
 #ifdef LEFT_CLIP
 		return true;
@@ -415,7 +416,7 @@ namespace render
 		}
 		
 		// display
-		ui::blt32(vBuffer32, SCREEN_WIDTH, SCREEN_HEIGHT);
+		emu::present(vBuffer32, SCREEN_WIDTH, SCREEN_HEIGHT);
 	}
 
 	static void startVBlank()
@@ -464,14 +465,14 @@ namespace render
 
 	static void beginFrame()
 	{
-		ui::onFrameBegin();
+		emu::onFrameBegin();
 	}
 
 	static void endFrame()
 	{
 		++frameNum;
 
-		ui::onFrameEnd();
+		emu::onFrameEnd();
 	}
 
 	static void drawBackground()
@@ -485,7 +486,7 @@ namespace render
 			const int startY=(address(PPUADDR::YSCROLL)<<3)+address(PPUADDR::YOFFSET);
 
 			assert(startX>=0 && startX<256);
-			assert(startY>=0 && startY<240);
+			assert(startY>=0 && startY<256);
 
 			// determine what tables to use for the first part
 			vaddr_flag_t mirrored(mem::ntMirror(address));
@@ -573,7 +574,11 @@ namespace render
 		}
 	}
 
-	int visibleSpriteCount=0;
+#ifdef MONITOR_RENDERING
+	static int visibleFrontSpriteCount;
+	static int visibleBackSpriteCount;
+#endif
+
 	static void evaluateSprites()
 	{
 		pendingSpritesCount=0;
@@ -585,7 +590,7 @@ namespace render
 			// find sprites that are within y range for the scanline
 			const int sprHeight=control[PPUCTRL::LARGE_SPRITE]?16:8;
 
-			for (int i=63;i>=0;i--)
+			for (int i=0;i<64;i++)
 			{
 				if (oamSprite(i).yminus1<scanline && oamSprite(i).yminus1+sprHeight>=scanline)
 				{
@@ -604,21 +609,29 @@ namespace render
 			}
 
 #ifdef MONITOR_RENDERING
-			visibleSpriteCount=0;
+			// count visible sprites
+			visibleFrontSpriteCount=0;
+			visibleBackSpriteCount=0;
 			for (int i=63;i>=0;i--)
 			{
 				if (oamSprite(i).yminus1<239)
-					visibleSpriteCount++;
+				{
+					if (oamSprite(i).attrib[SPRATTR::BEHIND_BG])
+						visibleBackSpriteCount++;
+					else
+						visibleFrontSpriteCount++;
+				}
 			}
 #endif
 			for (int i=0;i<RENDER_WIDTH;i++)
 			{
-				solidPixel[i]=((vBuffer[scanline][i]&3)!=0);
+				solidPixel[i]=((vBuffer[scanline][i]&3)!=0); // indicate whether a background pixel is opaque
+				spritePixel[i]=false;
 			}
 		}
 	}
 
-	static void drawSprites(const bool behindBG)
+	static void drawSprites()
 	{
 		if (pendingSpritesCount>0)
 		{
@@ -629,12 +642,15 @@ namespace render
 			{
 				const int sprId = pendingSprites[i];
 				const auto spr = oamSprite(sprId);
-				if (spr.attrib[SPRATTR::BEHIND_BG]!=behindBG) continue;
+				const bool behindBG = spr.attrib[SPRATTR::BEHIND_BG];
 
 				// get the sprite info
-				const int sprYOffset = scanline-(spr.yminus1+1);
+				int sprYOffset = scanline-(spr.yminus1+1);
 				vassert(sprYOffset>=0 && sprYOffset<sprHeight);
-
+				if (spr.attrib[SPRATTR::FLIP_V])
+				{
+					sprYOffset=sprHeight-1-sprYOffset;
+				}
 				const byte_t colorD2D3 = spr.attrib.select(SPRATTR::COLOR_HI)<<2;
 
 				for (int pixel=0;pixel<sprWidth;pixel++)
@@ -644,7 +660,7 @@ namespace render
 
 					const NESVRAM::VROM::PATTERN_TABLE *pt;
 					const int tileXOffset=spr.attrib[SPRATTR::FLIP_H]?(sprWidth-1-pixel):pixel;
-					const int tileYOffset=(spr.attrib[SPRATTR::FLIP_V]?(sprHeight-1-sprYOffset):sprYOffset)&7;
+					const int tileYOffset=sprYOffset&7;
 					tileid_t tileIndex;
 					if (control[PPUCTRL::LARGE_SPRITE])
 					{
@@ -663,31 +679,24 @@ namespace render
 					const byte_t colorD0D1 = ((colorD0>>(7-tileXOffset))&1)|(((colorD1>>(7-tileXOffset))<<1)&2);
 					const byte_t color = colorD0D1|colorD2D3|0x10;
 
-					if ((color&3)!=0) // opaque pixel
+					if (colorD0D1) // opaque sprite pixel
 					{
 						// sprite 0 hit detection (regardless priority)
-						
 						if (sprId==0 && !status[PPUSTATUS::HIT] && solidPixel[X] && mask[PPUMASK::BG_VISIBLE] && !(leftClipping() && X<8) && X!=255)
 						{
 							// background is non-transparent here
 							status|=PPUSTATUS::HIT;
 						}
 						// write to frame buffer
-						if (!behindBG)
+						if (!spritePixel[X])
 						{
-							// always overwite for front-priority sprites
-							vBuffer[scanline][X]=color;
-						}else
-						{
-							// only write when the corresponding background pixel is transparent
-							if ((vBuffer[scanline][X]&3)==0)
-							{
-								vBuffer[scanline][X]=color;
-							}
+							if (!behindBG || !solidPixel[X]) vBuffer[scanline][X]=color;
+							spritePixel[X]=true;
 						}
 					}
 
-					//if (!behindBG) vBuffer[scanline][X]=color;
+					// debug only
+					// if (behindBG) vBuffer[scanline][X]=color;
 				}
 			}
 		}
@@ -700,18 +709,17 @@ namespace render
 			if (scanline>=0 && scanline<=239)
 			{
 			#ifdef MONITOR_RENDERING
-				printf("[P] --- Scanline %03d --- Sprite 0: (%d, %d) %c%c%c Scroll=[%3d,%3d] %d visible\n", scanline, oamSprite(0).x, oamSprite(0).yminus1+1, 
+				printf("[P] --- Scanline %03d --- Sprite 0: (%d, %d) %c%c%c Scroll=[%3d,%3d] %d+%d visible\n", scanline, oamSprite(0).x, oamSprite(0).yminus1+1, 
 					(rom::mirrorMode()==MIRRORING::HORIZONTAL)?'H':'V',
 					mask[PPUMASK::SPR_VISIBLE]?'S':'-',
 					mask[PPUMASK::BG_VISIBLE]?'B':'-',
 					scroll(PPUADDR::XSCROLL)*8+xoffset,
 					scroll(PPUADDR::YSCROLL)*8+scroll(PPUADDR::YOFFSET),
-					visibleSpriteCount);
+					visibleFrontSpriteCount, visibleBackSpriteCount);
 			#endif
 				drawBackground();
 				evaluateSprites();
-				drawSprites(false); // front-priority sprites first
-				drawSprites(true);
+				drawSprites();
 			}else
 			{
 				// dummy scanline
@@ -954,6 +962,7 @@ namespace ppu
 		#ifdef MONITOR_RENDERING
 			debug::printPPUState(frameNum, scanline, status[PPUSTATUS::VBLANK], status[PPUSTATUS::HIT], mask[PPUMASK::BG_VISIBLE], mask[PPUMASK::SPR_VISIBLE]);
 		#endif
+		mapper::HBlank();
 		return render::HBlank();
 	}
 
@@ -1016,6 +1025,7 @@ namespace pmapper
 		case 1: // Mapper 1: MMC1
 		case 2: // Mapper 2: UNROM - PRG/16K
 		case 3: // Mapper 3: CNROM - VROM/8K
+		case 4: // MMC3 - PRG/8K, VROM/2K/1K, VT, SRAM, IRQ
 		case 7: // Mapper 7: AOROM - PRG/32K, Name Table Select
 			if (rom::sizeOfVROM()>=0x2000) // 8K of texture or more
 				mem::bankSwitch(0, 0, 8);

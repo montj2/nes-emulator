@@ -216,3 +216,9 @@ namespace pmapper
 
 	byte_t maskCHR(byte_t bank, const byte_t count);
 }
+
+namespace render
+{
+	bool enabled();
+	bool leftClipped();
+}

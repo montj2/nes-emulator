@@ -12,6 +12,11 @@ namespace emu
 	void run();
 
 	long long frameCount();
+	
+	// proxy functions
+	void present(const uint32_t buffer[], const int width, const int height);
+	void onFrameBegin();
+	void onFrameEnd();
 
 	// save state
 	void saveState(FILE *fp);

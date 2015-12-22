@@ -96,12 +96,27 @@ namespace emu
 		return ppu::currentFrame();
 	}
 
+	void present(const uint32_t buffer[], const int width, const int height)
+	{
+		ui::blt32(buffer, width, height);
+	}
+
+	void onFrameBegin()
+	{
+		ui::onFrameBegin();
+	}
+
+	void onFrameEnd()
+	{
+		ui::onFrameEnd();
+	}
+
 	void saveState(FILE *fp)
 	{
 		mmc::save(fp);
-		mapper::save(fp);
 		cpu::save(fp);
 		ppu::save(fp);
+		mapper::save(fp);
 	}
 
 	void loadState(FILE *fp)
@@ -109,8 +124,8 @@ namespace emu
 		reset(); // necessary
 
 		mmc::load(fp);
-		mapper::load(fp);
 		cpu::load(fp);
 		ppu::load(fp);
+		mapper::load(fp);
 	}
 }

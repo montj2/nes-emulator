@@ -88,7 +88,12 @@ namespace mapper
 
 	bool write(const maddr_t addr, const byte_t value);
 
+	void HBlank();
+
 	bool mmc1Write(const maddr_t addr, const byte_t value);
+	bool mmc3Write(const maddr_t addr, const byte_t value);
+
+	void mmc3HBlank();
 
 	byte_t maskPRG(byte_t bank, const byte_t count);
 
