@@ -11,11 +11,11 @@ An emulator to play [NES games](https://en.wikipedia.org/wiki/List_of_Nintendo_E
 
 ## Compatibility List
 * Super Mario Bros.
+* Super Mario Bros. 3
 * Adventure Island.
 * Legend of Zelda
 * Mega Man 2
-* Many many other roms that use mapper 0, 1, 2 or 3
-* Coming soon: Super Mario Bros. 3 (using mapper 4/MMC3)
+* Many many other roms that use mapper 0, 1, 2, 3 or 4 (Theoretical 60% of roms)
 
 ## Controls
 * Button A: X
@@ -29,4 +29,4 @@ An emulator to play [NES games](https://en.wikipedia.org/wiki/List_of_Nintendo_E
 * Quit: Ctrl+Esc (Alt+F4 in DX9 mode)
 
 ## Known limitation
-* Sound is not supported yet
+* APU is not implemented, so there's no sound while playing.
